@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# PlatformIO / firmware
+firmware/.pio
+firmware/include/config.h
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
