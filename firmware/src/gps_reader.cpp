@@ -16,7 +16,9 @@ void GpsReader::poll() {
 
 GpsFix GpsReader::currentFix() {
   GpsFix fix;
-  fix.valid = gps_.location.isValid() && gps_.location.isUpdated();
+  // isUpdated() only means a sentence changed since the last accessor call.
+  // A real fix remains usable between NMEA sentences, provided it is fresh.
+  fix.valid = gps_.location.isValid() && gps_.location.age() <= 5000;
   if (gps_.location.isValid()) {
     fix.latitude = gps_.location.lat();
     fix.longitude = gps_.location.lng();

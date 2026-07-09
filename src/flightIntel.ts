@@ -7,8 +7,11 @@ const RAD_TO_DEG = 180 / Math.PI
 export type FlightPrediction = AircraftTraffic & {
   distance_km: number
   closest_distance_km: number
+  closest_3d_distance_km: number
+  altitude_separation_m: number
   minutes_to_closest: number
   flyby_probability: number
+  prediction_confidence: number
   approach_direction: string
   projected_path: [number, number][]
   fr24_url: string
@@ -70,21 +73,41 @@ export function predictFlight(
   targetLat: number,
   targetLon: number,
   radiusKm: number,
+  targetAltitudeM = 0,
 ): FlightPrediction {
   const currentDistance = distanceKm(aircraft.lat, aircraft.lon, targetLat, targetLon)
   const eastKm = (targetLon - aircraft.lon) * 111.32 * Math.cos(toRad((targetLat + aircraft.lat) / 2))
   const northKm = (targetLat - aircraft.lat) * 111.32
   const heading = toRad(aircraft.heading_deg)
-  const velocityEast = Math.sin(heading)
-  const velocityNorth = Math.cos(heading)
-  const alongTrackKm = eastKm * velocityEast + northKm * velocityNorth
-  const speedKmMin = Math.max(aircraft.velocity_kmph / 60, 0.1)
-  const minutesToClosest = Math.max(0, alongTrackKm / speedKmMin)
-  const crossTrackSq = Math.max(0, currentDistance ** 2 - Math.max(0, alongTrackKm) ** 2)
-  const closestDistance = alongTrackKm > 0 ? Math.sqrt(crossTrackSq) : currentDistance
+  const speedKmMin = Math.max(aircraft.velocity_kmph / 60, 0)
+  const velocityEast = Math.sin(heading) * speedKmMin
+  const velocityNorth = Math.cos(heading) * speedKmMin
+  const altitudeKm = (targetAltitudeM - aircraft.altitude_m) / 1000
+  const velocityVertical = aircraft.vertical_rate_mps * 0.06
+  const velocitySquared =
+    velocityEast ** 2 + velocityNorth ** 2 + velocityVertical ** 2
+  const projectedMinutes = velocitySquared > 0.000001
+    ? (eastKm * velocityEast + northKm * velocityNorth + altitudeKm * velocityVertical) / velocitySquared
+    : 0
+  const minutesToClosest = Math.min(60, Math.max(0, projectedMinutes))
+  const closestEast = eastKm - velocityEast * minutesToClosest
+  const closestNorth = northKm - velocityNorth * minutesToClosest
+  const closestAltitudeKm = altitudeKm - velocityVertical * minutesToClosest
+  const closestDistance = minutesToClosest === 0
+    ? currentDistance
+    : Math.hypot(closestEast, closestNorth)
+  const closest3dDistance = Math.hypot(closestEast, closestNorth, closestAltitudeKm)
+  const altitudeSeparationM = Math.abs(closestAltitudeKm * 1000)
   const distanceScore = Math.max(0, 1 - closestDistance / Math.max(radiusKm, 1))
+  const altitudeScore = Math.max(0, 1 - altitudeSeparationM / 5000)
   const timeScore = Math.max(0, 1 - minutesToClosest / 60)
-  const probability = Math.round(Math.min(100, distanceScore * 75 + timeScore * 25))
+  const ageMs = Math.max(0, Date.now() - aircraft.updated_at)
+  const freshnessScore = Math.max(0, 1 - ageMs / 60_000)
+  const motionScore = Math.min(1, aircraft.velocity_kmph / 150)
+  const confidence = Math.round(100 * (freshnessScore * 0.7 + motionScore * 0.3))
+  const probability = Math.round(
+    Math.min(100, (distanceScore * 0.55 + altitudeScore * 0.25 + timeScore * 0.2) * confidence / 100),
+  )
   const approachBearing = bearingDeg(targetLat, targetLon, aircraft.lat, aircraft.lon)
   const pathDistance = Math.max(20, Math.min(120, aircraft.velocity_kmph / 12))
 
@@ -92,8 +115,11 @@ export function predictFlight(
     ...aircraft,
     distance_km: currentDistance,
     closest_distance_km: closestDistance,
+    closest_3d_distance_km: closest3dDistance,
+    altitude_separation_m: altitudeSeparationM,
     minutes_to_closest: minutesToClosest,
     flyby_probability: probability,
+    prediction_confidence: confidence,
     approach_direction: bearingToCardinal(approachBearing),
     projected_path: [
       [aircraft.lat, aircraft.lon],

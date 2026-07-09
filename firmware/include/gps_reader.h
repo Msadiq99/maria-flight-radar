@@ -21,7 +21,7 @@ class GpsReader {
   // Call this frequently (every loop iteration) so no bytes are dropped.
   void poll();
 
-  // Not const: TinyGPS++'s accessors mutate internal "updated" flags.
+  // Returns the latest fix while it remains fresh (currently five seconds).
   GpsFix currentFix();
 
  private:

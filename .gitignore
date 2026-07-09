@@ -11,6 +11,10 @@ node_modules
 dist
 dist-ssr
 *.local
+backend/data/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
 
 # PlatformIO / firmware
 firmware/.pio

@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <M5Unified.h>
 #include <WiFi.h>
+#include <esp_task_wdt.h>
 
 #include "config.h"
 #include "gps_reader.h"
@@ -57,14 +58,21 @@ void drawStatus(const GpsFix &fix, const ImuSample &imu, int httpStatus) {
                     displayPage == PAGE_STATUS ? "Status" : displayPage == PAGE_GPS ? "GPS" : "IMU");
 
   if (displayPage == PAGE_STATUS) {
-    M5.Display.printf("WiFi: %s\n", wifiManager.isConnected() ? "connected" : "offline");
+    M5.Display.printf("WiFi: %s\n", wifiManager.isConnected()
+                                         ? "connected"
+                                         : wifiManager.provisioningActive()
+                                               ? "setup AP"
+                                               : "offline");
     M5.Display.printf("RSSI: %d dBm\n", wifiManager.isConnected() ? WiFi.RSSI() : 0);
     M5.Display.printf("API:  %d\n", httpStatus);
     M5.Display.printf("GPS:  %s sats=%lu\n", fix.valid ? "fix" : "no fix",
                       (unsigned long)fix.satellites);
     M5.Display.printf("Mode: %s\n", SIMULATE_GPS_WHEN_NO_FIX ? "sim ok" : "real gps");
     M5.Display.printf("IMU:  %s\n", imu.valid ? "ok" : "missing");
-    M5.Display.printf("Up:   %lus\n", (unsigned long)(millis() / 1000));
+    M5.Display.printf("Q/Ack: %lu/%lu fail=%lu\n",
+                      (unsigned long)telemetryClient.queuedCount(),
+                      (unsigned long)telemetryClient.acknowledgedSequence(),
+                      (unsigned long)telemetryClient.failureCount());
   } else if (displayPage == PAGE_GPS) {
     M5.Display.printf("Fix:  %s\n", fix.valid ? "yes" : "no");
     M5.Display.printf("Sats: %lu\n", (unsigned long)fix.satellites);
@@ -93,6 +101,8 @@ void setup() {
   M5.begin(cfg);  // brings up the onboard MPU6886 IMU, display, and power management
 
   Serial.begin(115200);
+  esp_task_wdt_init(10, true);
+  esp_task_wdt_add(nullptr);
   pinMode(STATUS_LED_PIN, OUTPUT);
   M5.Display.setBrightness(80);
   M5.Display.setRotation(1);
@@ -115,6 +125,7 @@ void setup() {
 }
 
 void loop() {
+  esp_task_wdt_reset();
   M5.update();
   wifiManager.poll();
   gpsReader.poll();
@@ -137,7 +148,8 @@ void loop() {
 
   if (now - lastTelemetryAtMs >= TELEMETRY_INTERVAL_MS) {
     lastTelemetryAtMs = now;
-    lastHttpStatus = telemetryClient.send(fix, imu);
+    lastHttpStatus =
+        telemetryClient.send(fix, imu, M5.Power.getBatteryLevel());
     Serial.printf(
         "[telemetry] wifi_status=%d rssi=%d fix=%d sats=%lu status=%d "
         "imu_valid=%d accel=(%.2f,%.2f,%.2f)g\n",

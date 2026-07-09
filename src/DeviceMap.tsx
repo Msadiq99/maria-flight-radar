@@ -1,11 +1,12 @@
 import { useEffect } from 'react'
-import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet'
+import { Circle, MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import marker2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
 import 'leaflet/dist/leaflet.css'
 import type { FlightPrediction } from './flightIntel'
+import type { SavedLocation } from './radarSettings'
 
 // Vite bundles Leaflet's default marker images under hashed URLs, which
 // breaks Leaflet's built-in path guessing. Point it at the bundled assets.
@@ -34,21 +35,33 @@ function Recenter({ lat, lon }: { lat: number; lon: number }) {
 }
 
 export function DeviceMap({
-  lat,
-  lon,
+  centerLat,
+  centerLon,
+  deviceLat,
+  deviceLon,
   deviceId,
   trail,
   aircraft,
+  aircraftTrails,
+  radiusKm,
+  airports,
+  geofences,
 }: {
-  lat: number
-  lon: number
+  centerLat: number
+  centerLon: number
+  deviceLat: number | null
+  deviceLon: number | null
   deviceId: string
   trail: [number, number][]
   aircraft: FlightPrediction[]
+  aircraftTrails: Record<string, [number, number][]>
+  radiusKm: number
+  airports: { code: string; name: string; lat: number; lon: number; runways: string[] }[]
+  geofences: SavedLocation[]
 }) {
   return (
     <MapContainer
-      center={[lat, lon]}
+      center={[centerLat, centerLon]}
       zoom={14}
       scrollWheelZoom={false}
       style={{ height: '100%', width: '100%' }}
@@ -57,10 +70,25 @@ export function DeviceMap({
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      <Circle
+        center={[centerLat, centerLon]}
+        radius={radiusKm * 1000}
+        pathOptions={{ color: '#38bdf8', weight: 2, fillOpacity: 0.04 }}
+      />
+      {geofences.map((location) => (
+        <Circle
+          key={location.id}
+          center={[location.lat, location.lon]}
+          radius={location.radiusKm * 1000}
+          pathOptions={{ color: '#a855f7', weight: 1, fillOpacity: 0.02 }}
+        />
+      ))}
       {trail.length > 1 && <Polyline positions={trail} pathOptions={{ color: '#2563eb', weight: 4 }} />}
-      <Marker position={[lat, lon]}>
-        <Popup>{deviceId}</Popup>
-      </Marker>
+      {deviceLat !== null && deviceLon !== null && (
+        <Marker position={[deviceLat, deviceLon]}>
+          <Popup>{deviceId}</Popup>
+        </Marker>
+      )}
       {aircraft.map((item) => (
         <Polyline
           key={`${item.id}-projection`}
@@ -72,6 +100,15 @@ export function DeviceMap({
             dashArray: '4 8',
           }}
         />
+      ))}
+      {Object.entries(aircraftTrails).map(([id, positions]) => (
+        positions.length > 1 && (
+          <Polyline
+            key={`${id}-trail`}
+            positions={positions}
+            pathOptions={{ color: '#f59e0b', weight: 2, opacity: 0.45 }}
+          />
+        )
       ))}
       {aircraft.map((item) => (
         <Marker
@@ -90,7 +127,16 @@ export function DeviceMap({
           </Popup>
         </Marker>
       ))}
-      <Recenter lat={lat} lon={lon} />
+      {airports.map((airport) => (
+        <Marker key={airport.code} position={[airport.lat, airport.lon]}>
+          <Popup>
+            <strong>{airport.code}</strong> · {airport.name}
+            <br />
+            Runways: {airport.runways.join(', ')}
+          </Popup>
+        </Marker>
+      ))}
+      <Recenter lat={centerLat} lon={centerLon} />
     </MapContainer>
   )
 }

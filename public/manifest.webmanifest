@@ -1,0 +1,17 @@
+{
+  "name": "MARIA Flight Radar",
+  "short_name": "MARIA Radar",
+  "description": "Live tracker telemetry and nearby aircraft intelligence.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07111f",
+  "theme_color": "#0f766e",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

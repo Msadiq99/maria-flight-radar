@@ -50,19 +50,23 @@ Pin assignments live in `include/pins.h`.
 ## Architecture
 
 - `wifi_manager` — connects to Wi-Fi and reconnects with exponential backoff
-  without blocking sensor reads.
+  without blocking sensor reads. After 30 seconds offline it exposes the
+  `MARIA-Setup` captive portal; it also manages NTP and Arduino OTA.
 - `gps_reader` — wraps TinyGPS++ over `Serial2`, polled every loop iteration
-  so incoming bytes are never dropped.
+  so incoming bytes are never dropped. A fix remains valid for five seconds
+  after its most recent NMEA position update.
 - `imu_reader` — reads the onboard MPU6886 via M5Unified.
 - `telemetry_client` — serializes the latest GPS fix + IMU sample to JSON and
-  POSTs it to the backend.
+  queues it for a background FreeRTOS HTTP worker so network delays cannot
+  starve GPS parsing or display/button updates. Up to 32 samples are buffered,
+  retried in order, signed with HMAC when configured, and correlated with
+  backend acknowledgements.
 - `main.cpp` — wires the above together in a single loop, sending telemetry
   every `TELEMETRY_INTERVAL_MS` (default 2s).
 
-No RTOS tasks yet — a single loop is enough for one GPS + one IMU at a 2s
-telemetry rate. If more sensors or a faster IMU sample rate are added later,
-move sensor polling to a FreeRTOS task pinned to core 0 and keep networking
-on core 1.
+Sensor polling and UI work remain in the Arduino loop. Blocking HTTP work runs
+on a separate FreeRTOS task; its bounded queue keeps the freshest samples when
+the network falls behind.
 
 ## Backend API contract
 
@@ -77,6 +81,16 @@ X-API-Key: <matches API_KEY in config.h>
 {
   "device_id": "MARIA-001",
   "uptime_ms": 123456,
+  "sequence": 42,
+  "captured_at": 1783555200000,
+  "diagnostics": {
+    "battery_percent": 82,
+    "wifi_rssi_dbm": -55,
+    "free_heap_bytes": 120000,
+    "reset_reason": 1,
+    "firmware_version": "0.3.0",
+    "delivery_failures": 0
+  },
   "gps": {
     "fix": true,
     "lat": 47.6062,
@@ -98,15 +112,15 @@ X-API-Key: <matches API_KEY in config.h>
 Note: `accel` is in g (not m/s²) and `gyro` is in deg/s (not rad/s) — that's
 what M5Unified reports for the onboard MPU6886.
 
-Expected response: `200 OK` (body ignored by the firmware). Any other status
-or a connection failure is logged over serial; the packet is dropped, not
-retried (next cycle will send fresh data anyway).
+Expected response: `200 OK` with `acknowledged_sequence`. Transport and server
+failures are retried; permanent 4xx validation/authentication failures are
+dropped so they cannot block newer samples.
 
 ## Known gaps / next steps
 
-- No local buffering if Wi-Fi is down for an extended period — packets are
-  simply dropped.
-- No OTA update support yet.
+- The 32-packet retry buffer is RAM-only and is lost on reboot.
+- OTA is LAN-based Arduino OTA; signed remote release management is not yet
+  implemented.
 - No power management beyond what M5Unified sets up by default — PLUS2 runs
   off its internal battery, so add deep-sleep/low-power handling before
   relying on battery-only operation for long stretches.

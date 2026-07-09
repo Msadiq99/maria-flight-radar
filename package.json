@@ -3,10 +3,14 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test": "vitest run src",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -23,6 +27,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "oxlint": "^1.71.0",
     "typescript": "~6.0.2",
-    "vite": "^5.4.19"
+    "vite": "^5.4.19",
+    "vitest": "^2.1.9"
   }
 }

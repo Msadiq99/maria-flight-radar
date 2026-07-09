@@ -11,8 +11,21 @@
 #define API_TELEMETRY_PATH "/api/telemetry"
 #define API_KEY "change-me"
 
+// Optional HMAC secret. Configure the same value as TELEMETRY_HMAC_SECRET on
+// the backend. Leave empty only for local development.
+#define TELEMETRY_HMAC_SECRET ""
+
+// Required when API_HOST uses https://. Paste the root CA certificate as a
+// PEM string. HTTPS deliberately fails closed when this is empty.
+#define TLS_ROOT_CA ""
+
 // Unique identifier for this tracker unit
 #define DEVICE_ID "MARIA-001"
+#define FIRMWARE_VERSION "0.3.0"
+
+// Captive portal and Arduino OTA credentials (use strong unique values).
+#define CONFIG_PORTAL_PASSWORD "maria-setup"
+#define OTA_PASSWORD ""
 
 // How often to read sensors and send a telemetry packet
 #define TELEMETRY_INTERVAL_MS 2000

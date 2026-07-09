@@ -11,7 +11,11 @@ React/Leaflet web dashboard.
 - Interactive Leaflet map with tracker trail and aircraft overlay
 - Nearby aircraft feed with mock traffic by default and OpenSky-ready backend
 - Flyby prediction based on heading, speed, distance, and monitoring radius
-- Closest-approach ETA, closest distance, and approach direction
+- 3D closest-approach prediction with vertical separation and confidence
+- Configurable browser alerts with callsign, airline, altitude, score, and
+  quiet-hour filters
+- Multi-tracker discovery and historical track playback
+- Saved monitoring geofences, aircraft trails, and airport/runway overlays
 - Detailed flight table with callsign, tail number, aircraft type, airline,
   route, altitude, speed, heading, distance, and flyby probability
 - Sortable aircraft list
@@ -19,6 +23,10 @@ React/Leaflet web dashboard.
 - Custom monitoring latitude, longitude, and radius
 - External links to Flightradar24 and Skybrary
 - Auto-refreshing telemetry and traffic data
+- Server-sent live telemetry with polling fallback
+- English and Arabic layouts, light/dark/system themes, and high contrast mode
+- CSV and GeoJSON exports plus shareable monitoring URLs
+- Installable PWA shell with offline caching
 
 ## Local development
 
