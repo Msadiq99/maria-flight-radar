@@ -1,21 +1,30 @@
-import { useEffect } from 'react'
-import { Circle, MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet'
-import L from 'leaflet'
-import marker2x from 'leaflet/dist/images/marker-icon-2x.png'
-import markerIcon from 'leaflet/dist/images/marker-icon.png'
-import markerShadow from 'leaflet/dist/images/marker-shadow.png'
-import 'leaflet/dist/leaflet.css'
-import type { FlightPrediction } from './flightIntel'
-import type { SavedLocation } from './radarSettings'
+import { useEffect } from 'react';
+import {
+  Circle,
+  MapContainer,
+  Marker,
+  Polyline,
+  Popup,
+  TileLayer,
+  useMap,
+} from 'react-leaflet';
+import L from 'leaflet';
+import marker2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+import 'leaflet/dist/leaflet.css';
+import type { FlightPrediction } from './flightIntel';
+import type { SavedLocation } from './radarSettings';
 
 // Vite bundles Leaflet's default marker images under hashed URLs, which
 // breaks Leaflet's built-in path guessing. Point it at the bundled assets.
-delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl
+delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })
+  ._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: marker2x,
   iconUrl: markerIcon,
   shadowUrl: markerShadow,
-})
+});
 
 function aircraftIcon(heading: number, lowAltitude: boolean) {
   return L.divIcon({
@@ -23,15 +32,15 @@ function aircraftIcon(heading: number, lowAltitude: boolean) {
     html: `<span style="transform: rotate(${heading}deg)">▲</span>`,
     iconSize: [28, 28],
     iconAnchor: [14, 14],
-  })
+  });
 }
 
 function Recenter({ lat, lon }: { lat: number; lon: number }) {
-  const map = useMap()
+  const map = useMap();
   useEffect(() => {
-    map.setView([lat, lon])
-  }, [lat, lon, map])
-  return null
+    map.setView([lat, lon]);
+  }, [lat, lon, map]);
+  return null;
 }
 
 export function DeviceMap({
@@ -47,17 +56,23 @@ export function DeviceMap({
   airports,
   geofences,
 }: {
-  centerLat: number
-  centerLon: number
-  deviceLat: number | null
-  deviceLon: number | null
-  deviceId: string
-  trail: [number, number][]
-  aircraft: FlightPrediction[]
-  aircraftTrails: Record<string, [number, number][]>
-  radiusKm: number
-  airports: { code: string; name: string; lat: number; lon: number; runways: string[] }[]
-  geofences: SavedLocation[]
+  centerLat: number;
+  centerLon: number;
+  deviceLat: number | null;
+  deviceLon: number | null;
+  deviceId: string;
+  trail: [number, number][];
+  aircraft: FlightPrediction[];
+  aircraftTrails: Record<string, [number, number][]>;
+  radiusKm: number;
+  airports: {
+    code: string;
+    name: string;
+    lat: number;
+    lon: number;
+    runways: string[];
+  }[];
+  geofences: SavedLocation[];
 }) {
   return (
     <MapContainer
@@ -83,7 +98,12 @@ export function DeviceMap({
           pathOptions={{ color: '#a855f7', weight: 1, fillOpacity: 0.02 }}
         />
       ))}
-      {trail.length > 1 && <Polyline positions={trail} pathOptions={{ color: '#2563eb', weight: 4 }} />}
+      {trail.length > 1 && (
+        <Polyline
+          positions={trail}
+          pathOptions={{ color: '#2563eb', weight: 4 }}
+        />
+      )}
       {deviceLat !== null && deviceLon !== null && (
         <Marker position={[deviceLat, deviceLon]}>
           <Popup>{deviceId}</Popup>
@@ -101,15 +121,16 @@ export function DeviceMap({
           }}
         />
       ))}
-      {Object.entries(aircraftTrails).map(([id, positions]) => (
-        positions.length > 1 && (
-          <Polyline
-            key={`${id}-trail`}
-            positions={positions}
-            pathOptions={{ color: '#f59e0b', weight: 2, opacity: 0.45 }}
-          />
-        )
-      ))}
+      {Object.entries(aircraftTrails).map(
+        ([id, positions]) =>
+          positions.length > 1 && (
+            <Polyline
+              key={`${id}-trail`}
+              positions={positions}
+              pathOptions={{ color: '#f59e0b', weight: 2, opacity: 0.45 }}
+            />
+          )
+      )}
       {aircraft.map((item) => (
         <Marker
           key={item.id}
@@ -119,11 +140,14 @@ export function DeviceMap({
           <Popup>
             <strong>{item.callsign}</strong>
             <br />
-            {item.aircraft_type || 'Unknown type'} · {item.airline || 'Unknown airline'}
+            {item.aircraft_type || 'Unknown type'} ·{' '}
+            {item.airline || 'Unknown airline'}
             <br />
-            {item.altitude_m.toLocaleString()} m · {item.velocity_kmph.toFixed(0)} km/h
+            {item.altitude_m.toLocaleString()} m ·{' '}
+            {item.velocity_kmph.toFixed(0)} km/h
             <br />
-            Flyby {item.flyby_probability}% · CPA {item.closest_distance_km.toFixed(1)} km
+            Flyby {item.flyby_probability}% · CPA{' '}
+            {item.closest_distance_km.toFixed(1)} km
           </Popup>
         </Marker>
       ))}
@@ -138,5 +162,5 @@ export function DeviceMap({
       ))}
       <Recenter lat={centerLat} lon={centerLon} />
     </MapContainer>
-  )
+  );
 }

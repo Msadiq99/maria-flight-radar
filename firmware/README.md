@@ -24,11 +24,11 @@ The PLUS2 only exposes 4 GPIOs on its 8-pin HAT connector: `G26, G36/G25, G0`
 (plus 5V/3V3/GND/BAT). The onboard IMU uses the internal I2C bus and needs no
 external wiring.
 
-| Module | Pin | ESP32 pin |
-|--------|-----|-----------|
-| GPS    | TX  | G26 (RX2, receive-only) |
-| GPS    | RX  | not connected — firmware never transmits to the GPS |
-| GPS    | VCC/GND | 3.3V / GND (via HAT connector) |
+| Module | Pin     | ESP32 pin                                           |
+| ------ | ------- | --------------------------------------------------- |
+| GPS    | TX      | G26 (RX2, receive-only)                             |
+| GPS    | RX      | not connected — firmware never transmits to the GPS |
+| GPS    | VCC/GND | 3.3V / GND (via HAT connector)                      |
 
 Pin assignments live in `include/pins.h`.
 
@@ -44,7 +44,7 @@ Pin assignments live in `include/pins.h`.
    pio device monitor
    ```
    PlatformIO auto-detects the USB serial port; pass `--upload-port
-   /dev/cu.usbserial-XXXX` explicitly if it picks the wrong one (check with
+/dev/cu.usbserial-XXXX` explicitly if it picks the wrong one (check with
    `pio device list`).
 
 ## Architecture

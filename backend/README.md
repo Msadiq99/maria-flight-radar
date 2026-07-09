@@ -12,6 +12,7 @@ API_KEY=replace-with-a-random-secret PORT=8080 npm start
 ```
 
 Environment variables:
+
 - `PORT` — default `8080`
 - `API_KEY` — must match `API_KEY` in the firmware's `config.h`. Development
   defaults to `change-me`; production refuses to start without an explicit key.

@@ -1,4 +1,4 @@
-export type Language = 'en' | 'ar'
+export type Language = 'en' | 'ar';
 
 const messages = {
   en: {
@@ -31,10 +31,10 @@ const messages = {
     exportGeoJson: 'تصدير GeoJSON',
     copyLink: 'نسخ رابط المشاركة',
   },
-} as const
+} as const;
 
-export type MessageKey = keyof typeof messages.en
+export type MessageKey = keyof typeof messages.en;
 
 export function translate(language: Language, key: MessageKey) {
-  return messages[language][key]
+  return messages[language][key];
 }

@@ -11,7 +11,9 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test": "vitest run src",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "leaflet": "^1.9.4",
@@ -26,6 +28,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.3.4",
     "oxlint": "^1.71.0",
+    "prettier": "^3.9.4",
     "typescript": "~6.0.2",
     "vite": "^5.4.19",
     "vitest": "^2.1.9"
