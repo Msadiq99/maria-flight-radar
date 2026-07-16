@@ -9,6 +9,7 @@
 
 #ifdef MARIA_ESP32_28_RADAR_TERMINAL
 #include "board_profiles/esp32_2432s028r.h"
+#include "radar_terminal/diagnostic_app.h"
 #include "radar_terminal/radar_screen.h"
 #include "radar_terminal/radar_settings.h"
 #include "radar_terminal/touch_controller.h"
@@ -33,10 +34,12 @@ MariaRadar::RadarSettings radarSettings;
 MariaRadar::RadarScreen radarScreen;
 MariaRadar::TouchController touchController;
 MariaRadar::TrafficClient trafficClient;
+MariaRadar::DiagnosticApp diagnosticApp;
 
 MariaRadar::TerminalScreen terminalScreen = MariaRadar::TerminalScreen::Radar;
 uint32_t lastDisplayAtMs = 0;
 int selectedAircraft = -1;
+bool diagnosticsActive = false;
 
 GpsFix simulatedFix() {
   const float step = (millis() / 1000) % 240;
@@ -133,8 +136,15 @@ void setup() {
   esp_task_wdt_init(10, true);
   esp_task_wdt_add(nullptr);
   radarSettings.begin();
-  radarScreen.begin();
-  touchController.begin();
+  diagnosticsActive = MariaRadar::diagnosticBootRequested();
+  if (diagnosticsActive) {
+    diagnosticApp.begin(&wifiManager);
+  } else {
+    radarScreen.begin();
+#if !MARIA_DISABLE_TOUCH
+    touchController.begin();
+#endif
+  }
   gpsReader.begin(Serial2, GPS_RX_PIN, GPS_TX_PIN, GPS_BAUD);
   wifiManager.begin(WIFI_SSID, WIFI_PASSWORD);
   trafficClient.begin(API_HOST, API_KEY);
@@ -153,8 +163,21 @@ void loop() {
     fix = simulatedFix();
   }
 
+  if (diagnosticsActive) {
+    if (diagnosticApp.poll(fix)) {
+      diagnosticsActive = false;
+      radarScreen.begin();
+#if !MARIA_DISABLE_TOUCH
+      touchController.begin();
+#endif
+    }
+    return;
+  }
+
   MariaRadar::RadarPreferences preferences = radarSettings.get();
+#if !MARIA_DISABLE_TOUCH
   handleTouch(touchController.poll(preferences));
+#endif
   preferences = radarSettings.get();
 
   trafficClient.poll(wifiManager.isConnected(), fix, preferences.rangeKm, now);
