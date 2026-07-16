@@ -4,17 +4,37 @@
 
 // MARIA ESP32 2.8-inch radar terminal board profile.
 //
-// Expected board family: ESP32-2432S028R, often sold as a 2.8-inch integrated
-// ESP32 + ILI9341 + XPT2046 display module. These pin values match common
-// ESP32-2432S028R/CYD public profiles, but the exact PCB revision has not been
-// physically inspected in this repository. Verify the silk-screen/PCB marking
-// before treating this profile as hardware-validated.
+// Confirmed from PCB photos:
+// - PCB marking: "2.8 LCD Display ESP32-32E 240x320 Resistance Touch"
+// - ESP32-32E module
+// - 2.8-inch 240x320 display
+// - resistive touch
+// - USB-C, microSD, RGB LED, speaker connector, battery connector, UART header,
+//   and expansion connector.
+//
+// Still unverified on a powered device:
+// - TFT controller, touch controller, GPIO mapping, backlight active level,
+//   display rotation, touch calibration, SD pins, speaker output behavior.
 
 namespace MariaBoard {
 
 constexpr const char *kBoardName = "ESP32-2432S028R";
+constexpr const char *kPcbMarking =
+    "2.8 LCD Display ESP32-32E 240x320 Resistance Touch";
 constexpr const char *kValidationStatus =
-    "UNVERIFIED_TEMPLATE_REQUIRES_PCB_MARKING";
+    "PARTIALLY_VERIFIED_FROM_PCB_PHOTOS";
+constexpr const char *kPinValidationStatus = "UNVERIFIED_UNTIL_POWERED_TEST";
+constexpr uint8_t kProfileRevision = 2;
+
+struct BoardIdentity {
+  const char *family;
+  const char *pcbMarking;
+  uint16_t width;
+  uint16_t height;
+  const char *touchType;
+  const char *validationStatus;
+  uint8_t profileRevision;
+};
 
 constexpr uint16_t kDisplayWidth = 320;
 constexpr uint16_t kDisplayHeight = 240;
@@ -41,12 +61,24 @@ constexpr int kBacklightActiveLevel = HIGH;
 constexpr int kRgbLedRed = 4;
 constexpr int kRgbLedGreen = 16;
 constexpr int kRgbLedBlue = 17;
+constexpr int kRgbActiveLevel = HIGH;
 
 constexpr int kSdMiso = 19;
 constexpr int kSdMosi = 23;
 constexpr int kSdSclk = 18;
 constexpr int kSdCs = 5;
 
+constexpr int kSpeakerPin = -1;
+constexpr int kSpeakerActiveLevel = HIGH;
+
 constexpr uint32_t kSerialBaud = 115200;
+
+constexpr BoardIdentity kIdentity{kBoardName,
+                                  kPcbMarking,
+                                  kDisplayWidth,
+                                  kDisplayHeight,
+                                  "resistive touch",
+                                  kValidationStatus,
+                                  kProfileRevision};
 
 }  // namespace MariaBoard
