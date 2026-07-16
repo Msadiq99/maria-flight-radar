@@ -69,11 +69,11 @@ OPENSKY_PASSWORD=...
 
 The frontend reads the same normalized traffic shape either way.
 
-## Planned extension modes
+## Optional future extensions
 
 - Streamlit interface: reuse the backend API for a Python dashboard with
   organized pages and interactive controls.
 - Terminal export mode: call the backend traffic endpoint and generate Folium
   HTML maps plus CSV exports for offline viewing.
-- SQLite persistence: replace or supplement the in-memory backend `Map` with a
-  SQLite store for telemetry, traffic snapshots, and historical flyby analysis.
+  Telemetry, traffic snapshots, and historical flyby data are already persisted
+  by the backend SQLite store.
