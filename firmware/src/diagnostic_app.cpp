@@ -4,10 +4,12 @@
 
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
+#include <Preferences.h>
 #include <SD.h>
 #include <SPI.h>
 #include <TFT_eSPI.h>
 #include <WiFi.h>
+#include <XPT2046_Touchscreen.h>
 #include <esp_system.h>
 
 #include "board_profiles/esp32_2432s028r.h"
@@ -17,6 +19,7 @@ namespace MariaRadar {
 
 namespace {
 TFT_eSPI diagTft;
+XPT2046_Touchscreen diagTouch(MariaBoard::kTouchCs, MariaBoard::kTouchIrq);
 constexpr uint16_t kBg = TFT_BLACK;
 constexpr uint16_t kPanel = 0x0861;
 constexpr uint16_t kCyan = 0x07ff;
@@ -26,6 +29,8 @@ constexpr uint16_t kRed = 0xf800;
 constexpr uint16_t kWhite = TFT_WHITE;
 constexpr uint8_t kDisplayStepCount = 10;
 constexpr uint8_t kDemoAircraftCount = 10;
+constexpr const char *kPrefsNamespace = "maria-radar";
+constexpr const char *kPrefsBlob = "prefs";
 
 const char *screenName(DiagnosticScreen screen) {
   switch (screen) {
@@ -97,6 +102,13 @@ void DiagnosticApp::begin(WifiManager *wifiManager) {
   diagTft.fillScreen(kBg);
   diagTft.setTextFont(2);
   diagTft.setTextDatum(TL_DATUM);
+#if !MARIA_DISABLE_TOUCH
+  SPI.begin(MariaBoard::kTouchSclk, MariaBoard::kTouchMiso,
+            MariaBoard::kTouchMosi, MariaBoard::kTouchCs);
+  touchReady_ = diagTouch.begin();
+  diagTouch.setRotation(MariaBoard::kLandscapeRotation);
+#endif
+  loadTouchCalibration();
   Serial.println("[diag] MARIA diagnostics ready");
   Serial.println("[diag] commands: help info display touch wifi backend sd led speaker demo normal reboot");
   printBoardInfo();
@@ -226,13 +238,90 @@ void DiagnosticApp::drawTouchTest() {
 #if MARIA_DISABLE_TOUCH
   diagTft.drawString("Touch disabled by build flag", 8, 40);
 #else
-  diagTft.drawString("Touch stack compiled: XPT2046", 8, 40);
-  diagTft.drawString("Use serial 'touch' if panel is wrong", 8, 66);
-  diagTft.drawString("Calibration workflow:", 8, 96);
-  diagTft.drawString("TL -> TR -> BR -> BL -> CENTER", 8, 122);
-  diagTft.drawString("Raw/mapped values print during powered test", 8, 152);
+  if (!touchReady_) {
+    diagTft.drawString("Touch init failed - use serial menu", 8, 40);
+    return;
+  }
+  lastTouchDetected_ = diagTouch.touched();
+  if (lastTouchDetected_) {
+    TS_Point point = diagTouch.getPoint();
+    if (point.x > 0 && point.y > 0) {
+      lastRawX_ = point.x;
+      lastRawY_ = point.y;
+      lastMappedX_ =
+          mapCalibrated(point.x, touchBounds_.minX, touchBounds_.maxX, 0, 319);
+      lastMappedY_ =
+          mapCalibrated(point.y, touchBounds_.minY, touchBounds_.maxY, 0, 239);
+      if (calibrationStep_ < 5) {
+        calibrationSamples_[calibrationStep_].x = point.x;
+        calibrationSamples_[calibrationStep_].y = point.y;
+        calibrationSamples_[calibrationStep_].valid = true;
+        calibrationStep_++;
+        Serial.printf("[diag] touch sample step=%u raw=%d,%d mapped=%d,%d\n",
+                      calibrationStep_, lastRawX_, lastRawY_, lastMappedX_,
+                      lastMappedY_);
+        if (calibrationStep_ == 5) {
+          CalibrationBounds next{};
+          next.minX = min(calibrationSamples_[0].x, calibrationSamples_[3].x);
+          next.maxX = max(calibrationSamples_[1].x, calibrationSamples_[2].x);
+          next.minY = min(calibrationSamples_[0].y, calibrationSamples_[1].y);
+          next.maxY = max(calibrationSamples_[2].y, calibrationSamples_[3].y);
+          if (validCalibrationBounds(next)) {
+            touchBounds_ = next;
+            saveTouchCalibration(touchBounds_);
+            Serial.println("[diag] touch calibration saved");
+          } else {
+            Serial.println("[diag] touch calibration rejected");
+            calibrationStep_ = 0;
+          }
+        }
+      }
+    }
+  }
+  diagTft.printf("Raw: %d,%d  detected:%s\n", lastRawX_, lastRawY_,
+                 lastTouchDetected_ ? "yes" : "no");
+  diagTft.printf("Mapped: %d,%d rotation:%u\n", lastMappedX_, lastMappedY_,
+                 MariaBoard::kLandscapeRotation);
+  diagTft.printf("Bounds X:%d-%d Y:%d-%d\n", touchBounds_.minX,
+                 touchBounds_.maxX, touchBounds_.minY, touchBounds_.maxY);
+  const char *steps[] = {"top-left", "top-right", "bottom-right",
+                         "bottom-left", "center", "saved"};
+  diagTft.printf("Calibration: touch %s\n", steps[min<uint8_t>(calibrationStep_, 5)]);
+  diagTft.drawLine(lastMappedX_ - 8, lastMappedY_, lastMappedX_ + 8,
+                   lastMappedY_, kAmber);
+  diagTft.drawLine(lastMappedX_, lastMappedY_ - 8, lastMappedX_,
+                   lastMappedY_ + 8, kAmber);
 #endif
   drawButton(8, 202, 86, "Menu");
+}
+
+void DiagnosticApp::loadTouchCalibration() {
+  Preferences store;
+  store.begin(kPrefsNamespace, true);
+  RadarPreferences prefs{};
+  const size_t read = store.getBytes(kPrefsBlob, &prefs, sizeof(prefs));
+  store.end();
+  if (read == sizeof(prefs) && validPreferences(prefs) && prefs.touchCalibrated) {
+    touchBounds_.minX = prefs.touchMinX;
+    touchBounds_.maxX = prefs.touchMaxX;
+    touchBounds_.minY = prefs.touchMinY;
+    touchBounds_.maxY = prefs.touchMaxY;
+  }
+}
+
+void DiagnosticApp::saveTouchCalibration(const CalibrationBounds &bounds) {
+  Preferences store;
+  store.begin(kPrefsNamespace, false);
+  RadarPreferences prefs{};
+  const size_t read = store.getBytes(kPrefsBlob, &prefs, sizeof(prefs));
+  if (read != sizeof(prefs) || !validPreferences(prefs)) prefs = RadarPreferences{};
+  prefs.touchCalibrated = true;
+  prefs.touchMinX = bounds.minX;
+  prefs.touchMaxX = bounds.maxX;
+  prefs.touchMinY = bounds.minY;
+  prefs.touchMaxY = bounds.maxY;
+  store.putBytes(kPrefsBlob, &prefs, sizeof(prefs));
+  store.end();
 }
 
 void DiagnosticApp::printBoardInfo() {

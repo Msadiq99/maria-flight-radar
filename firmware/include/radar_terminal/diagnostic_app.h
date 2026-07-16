@@ -35,6 +35,8 @@ class DiagnosticApp {
   void runSdTest();
   void runLedStep();
   void beep(uint16_t hz, uint16_t ms);
+  void loadTouchCalibration();
+  void saveTouchCalibration(const CalibrationBounds &bounds);
 
   WifiManager *wifiManager_ = nullptr;
   DiagnosticScreen screen_ = DiagnosticScreen::Menu;
@@ -50,6 +52,15 @@ class DiagnosticApp {
   uint16_t demoRangeKm_ = 50;
   int8_t demoSelected_ = 0;
   bool demoPaused_ = false;
+  CalibrationBounds touchBounds_{};
+  CalibrationSample calibrationSamples_[5]{};
+  uint8_t calibrationStep_ = 0;
+  bool touchReady_ = false;
+  int16_t lastRawX_ = 0;
+  int16_t lastRawY_ = 0;
+  int16_t lastMappedX_ = 0;
+  int16_t lastMappedY_ = 0;
+  bool lastTouchDetected_ = false;
 };
 
 bool diagnosticBootRequested();
