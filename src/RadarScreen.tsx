@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { DEVICE_ID } from './config';
 import { predictFlight } from './flightIntel';
-import { usePersistentState } from './radarSettings';
 import {
   bearingDegrees,
   distanceKm,
@@ -9,6 +8,18 @@ import {
   rangeRingValues,
   type RadarRange,
 } from './radarGeometry';
+import {
+  ALTITUDE_FILTER_LABELS,
+  filterAircraftByAltitude,
+  nearestVisibleAircraft,
+  type AltitudeFilter,
+} from './radar/altitudeFilter';
+import {
+  DEFAULT_RADAR_PREFERENCES,
+  loadRadarPreferences,
+  saveRadarPreferences,
+  type RadarPreferencesV2,
+} from './radar/radarPreferences';
 import { useTelemetry } from './telemetry';
 import { useNearbyTraffic } from './traffic';
 
@@ -26,20 +37,27 @@ export function RadarScreen() {
     Number(params.get('lat')) || (record?.gps.fix ? record.gps.lat : null);
   const centerLon =
     Number(params.get('lon')) || (record?.gps.fix ? record.gps.lon : null);
-  const [range, setRange] = usePersistentState<RadarRange>(
-    'maria.radar.range',
-    50
+  const [preferences, setPreferences] = useState<RadarPreferencesV2>(() =>
+    typeof localStorage === 'undefined'
+      ? DEFAULT_RADAR_PREFERENCES
+      : loadRadarPreferences()
   );
-  const [labels, setLabels] = usePersistentState('maria.radar.labels', true);
-  const [trails, setTrails] = usePersistentState('maria.radar.trails', true);
-  const [paused, setPaused] = usePersistentState('maria.radar.paused', false);
-  const [autoSelect, setAutoSelect] = usePersistentState(
-    'maria.radar.auto-select',
-    true
-  );
+  const range = preferences.rangeKm;
+  const labels = preferences.showLabels;
+  const trails = preferences.showTrails;
+  const paused = preferences.sweepPaused;
+  const autoSelect = preferences.autoSelect;
+  const altitudeFilter = preferences.altitudeFilter;
   const [selectedId, setSelectedId] = useState<string | null>(
     params.get('aircraft')
   );
+  const updatePreferences = (next: Partial<RadarPreferencesV2>) => {
+    setPreferences((current) => {
+      const resolved = { ...current, ...next, version: 2 as const };
+      if (typeof localStorage !== 'undefined') saveRadarPreferences(resolved);
+      return resolved;
+    });
+  };
   const traffic = useNearbyTraffic(centerLat, centerLon, range);
   const aircraft = useMemo(
     () =>
@@ -62,20 +80,33 @@ export function RadarScreen() {
     () => aircraft.filter((item) => item.distance_km <= range),
     [aircraft, range]
   );
-  const selected = inRange.find((item) => item.id === selectedId) || null;
+  const visibleAircraft = useMemo(
+    () => filterAircraftByAltitude(inRange, altitudeFilter),
+    [altitudeFilter, inRange]
+  );
+  const selected =
+    visibleAircraft.find((item) => item.id === selectedId) || null;
 
   useEffect(() => {
-    if (selected && inRange.some((item) => item.id === selected.id)) return;
-    if (autoSelect) setSelectedId(inRange[0]?.id || null);
-  }, [autoSelect, inRange, selected]);
+    if (selected && visibleAircraft.some((item) => item.id === selected.id)) {
+      return;
+    }
+    if (autoSelect) {
+      setSelectedId(nearestVisibleAircraft(visibleAircraft)?.id || null);
+    } else if (selectedId && !visibleAircraft.some((item) => item.id === selectedId)) {
+      setSelectedId(null);
+    }
+  }, [autoSelect, selected, selectedId, visibleAircraft]);
 
   const selectRelative = (step: number) => {
-    if (!inRange.length) return;
+    if (!visibleAircraft.length) return;
     const index = Math.max(
       0,
-      inRange.findIndex((item) => item.id === selectedId)
+      visibleAircraft.findIndex((item) => item.id === selectedId)
     );
-    setSelectedId(inRange[(index + step + inRange.length) % inRange.length].id);
+    setSelectedId(
+      visibleAircraft[(index + step + visibleAircraft.length) % visibleAircraft.length].id
+    );
   };
   const statusLabel = traffic.unreachable
     ? 'Traffic unreachable'
@@ -108,21 +139,29 @@ export function RadarScreen() {
               Aircraft<strong>{aircraft.length}</strong>
             </span>
             <span>
-              In range<strong>{inRange.length}</strong>
+              Visible<strong>{visibleAircraft.length}</strong>
             </span>
             <span>
               Flyby
               <strong>
-                {inRange.filter((item) => item.flyby_probability >= 35).length}
+                {
+                  visibleAircraft.filter((item) => item.flyby_probability >= 35)
+                    .length
+                }
               </strong>
             </span>
           </div>
+          <p className="radar-count">
+            {visibleAircraft.length} of {inRange.length} targets visible
+          </p>
           <label>
             Range
             <select
               value={range}
               onChange={(event) =>
-                setRange(Number(event.target.value) as RadarRange)
+                updatePreferences({
+                  rangeKm: Number(event.target.value) as RadarRange,
+                })
               }
             >
               {RANGES.map((item) => (
@@ -132,11 +171,30 @@ export function RadarScreen() {
               ))}
             </select>
           </label>
+          <label>
+            Altitude
+            <select
+              value={altitudeFilter}
+              onChange={(event) =>
+                updatePreferences({
+                  altitudeFilter: event.target.value as AltitudeFilter,
+                })
+              }
+            >
+              {Object.entries(ALTITUDE_FILTER_LABELS).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="radar-check">
             <input
               type="checkbox"
               checked={labels}
-              onChange={(event) => setLabels(event.target.checked)}
+              onChange={(event) =>
+                updatePreferences({ showLabels: event.target.checked })
+              }
             />{' '}
             Show labels
           </label>
@@ -144,7 +202,9 @@ export function RadarScreen() {
             <input
               type="checkbox"
               checked={trails}
-              onChange={(event) => setTrails(event.target.checked)}
+              onChange={(event) =>
+                updatePreferences({ showTrails: event.target.checked })
+              }
             />{' '}
             Show trails
           </label>
@@ -152,7 +212,9 @@ export function RadarScreen() {
             <input
               type="checkbox"
               checked={autoSelect}
-              onChange={(event) => setAutoSelect(event.target.checked)}
+              onChange={(event) =>
+                updatePreferences({ autoSelect: event.target.checked })
+              }
             />{' '}
             Auto-select nearest
           </label>
@@ -184,7 +246,7 @@ export function RadarScreen() {
             className={`radar-scope ${paused ? 'is-paused' : ''}`}
             viewBox="-250 -250 500 500"
             role="img"
-            aria-label={`${inRange.length} aircraft in range`}
+            aria-label={`${visibleAircraft.length} of ${inRange.length} aircraft visible`}
           >
             <circle className="radar-boundary" r="220" />
             {rangeRingValues(range).map((ring) => (
@@ -239,7 +301,7 @@ export function RadarScreen() {
                   ) : null;
                 })
               : null}
-            {inRange.map((item) => {
+            {visibleAircraft.map((item) => {
               const p = projectTarget(
                 bearingDegrees(
                   centerLat || 0,
@@ -285,12 +347,15 @@ export function RadarScreen() {
               type="button"
               onClick={() => selectRelative(-1)}
               aria-label="Previous target"
+              disabled={!visibleAircraft.length}
             >
               ◀ Previous
             </button>
             <button
               type="button"
-              onClick={() => setPaused((current) => !current)}
+              onClick={() =>
+                updatePreferences({ sweepPaused: !preferences.sweepPaused })
+              }
             >
               {paused ? 'Resume sweep' : 'Pause sweep'}
             </button>
@@ -298,6 +363,7 @@ export function RadarScreen() {
               type="button"
               onClick={() => selectRelative(1)}
               aria-label="Next target"
+              disabled={!visibleAircraft.length}
             >
               Next ▶
             </button>
@@ -366,7 +432,9 @@ export function RadarScreen() {
             <p className="radar-empty">
               {traffic.unreachable
                 ? 'Traffic feed unavailable.'
-                : 'No aircraft selected.'}
+                : visibleAircraft.length
+                  ? 'No aircraft selected.'
+                  : 'No aircraft match the current filters.'}
             </p>
           )}
         </aside>
@@ -378,7 +446,14 @@ export function RadarScreen() {
           ● {statusLabel}
         </span>
         <span>Tracker {deviceId}</span>
+        <span>
+          Targets {visibleAircraft.length}/{inRange.length}
+        </span>
+        <span>Altitude {ALTITUDE_FILTER_LABELS[altitudeFilter]}</span>
         <span>GPS {record ? (record.gps.fix ? 'FIX' : 'NO FIX') : '—'}</span>
+        <span>Traffic {traffic.unreachable ? 'UNREACHABLE' : traffic.stale ? 'STALE' : 'LIVE'}</span>
+        <span>Range {range} km</span>
+        <span>Sweep {paused ? 'PAUSED' : 'RUNNING'}</span>
         <span>SAT {value(record?.gps.satellites)}</span>
         <span>RSSI {value(record?.diagnostics?.wifi_rssi_dbm, ' dBm')}</span>
         <span>BAT {value(record?.diagnostics?.battery_percent, '%')}</span>
