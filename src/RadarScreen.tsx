@@ -21,6 +21,7 @@ import {
   validateAlertZones,
   type AlertZoneThresholds,
 } from './radar/alertZones';
+import { selectedAircraftMetadata } from './radar/aircraftMetadata';
 import {
   DEFAULT_RADAR_PREFERENCES,
   loadRadarPreferences,
@@ -32,8 +33,10 @@ import { useNearbyTraffic } from './traffic';
 
 const RANGES: RadarRange[] = [25, 50, 100, 200];
 
-function value(value: string | number | undefined, suffix = '') {
-  return value === undefined || value === '' ? '—' : `${value}${suffix}`;
+function value(value: string | number | null | undefined, suffix = '') {
+  return value === undefined || value === null || value === ''
+    ? '—'
+    : `${value}${suffix}`;
 }
 
 export function RadarScreen() {
@@ -100,6 +103,10 @@ export function RadarScreen() {
   const selectedZone = selected
     ? classifyAlertZone(selected.distance_km, preferences.alertZones)
     : null;
+  const selectedMetadata =
+    selected && selectedZone
+      ? selectedAircraftMetadata(selected, centerLat, centerLon, selectedZone)
+      : null;
   const applyZoneDraft = () => {
     if (zoneValidation) return;
     updatePreferences({ alertZones: zoneDraft });
@@ -485,58 +492,93 @@ export function RadarScreen() {
           <p className="radar-kicker">SELECTED AIRCRAFT</p>
           {selected ? (
             <>
-              <h2>{selected.callsign}</h2>
+              <h2>{selectedMetadata?.title || selected.callsign}</h2>
               <p className="radar-alert-badge">
-                {selectedZone ? ALERT_ZONE_LABELS[selectedZone] : 'TRACKING'} zone
+                {selectedMetadata?.alertZone || 'Tracking'} zone ·{' '}
+                {selectedMetadata?.freshness || 'Unknown'}
               </p>
               <dl>
                 <div>
                   <dt>Alert zone</dt>
-                  <dd>{selectedZone ? ALERT_ZONE_LABELS[selectedZone] : '—'}</dd>
+                  <dd>{selectedMetadata?.alertZone || '—'}</dd>
                 </div>
                 <div>
-                  <dt>Type / airline</dt>
-                  <dd>
-                    {value(selected.aircraft_type)} / {value(selected.airline)}
-                  </dd>
+                  <dt>Callsign / ICAO</dt>
+                  <dd>{value(selectedMetadata?.callsign)} / {value(selectedMetadata?.icao)}</dd>
                 </div>
                 <div>
                   <dt>Altitude</dt>
-                  <dd>{value(selected.altitude_m.toLocaleString(), ' m')}</dd>
+                  <dd>{value(selectedMetadata?.altitude)}</dd>
                 </div>
                 <div>
                   <dt>Speed / heading</dt>
                   <dd>
-                    {value(selected.velocity_kmph.toFixed(0), ' km/h')} /{' '}
-                    {value(selected.heading_deg.toFixed(0), '°')}
+                    {value(selectedMetadata?.groundSpeed)} /{' '}
+                    {value(selectedMetadata?.heading)}
                   </dd>
                 </div>
                 <div>
                   <dt>Distance / bearing</dt>
                   <dd>
-                    {value(selected.distance_km.toFixed(1), ' km')} /{' '}
-                    {value(
-                      bearingDegrees(
-                        centerLat || 0,
-                        centerLon || 0,
-                        selected.lat,
-                        selected.lon
-                      ).toFixed(0),
-                      '°'
-                    )}
+                    {value(selectedMetadata?.distance)} /{' '}
+                    {value(selectedMetadata?.bearing)}
                   </dd>
                 </div>
                 <div>
-                  <dt>Flyby probability</dt>
-                  <dd>{value(selected.flyby_probability, '%')}</dd>
+                  <dt>Vertical state</dt>
+                  <dd>
+                    {selectedMetadata?.verticalState || 'Unknown'} ·{' '}
+                    {value(selectedMetadata?.verticalSpeed)}
+                  </dd>
                 </div>
                 <div>
-                  <dt>Prediction</dt>
+                  <dt>Update</dt>
                   <dd>
-                    {value(selected.prediction_confidence, '% confidence')}
+                    {selectedMetadata?.updateAge === null
+                      ? '—'
+                      : `${selectedMetadata?.updateAge}s ago`} ·{' '}
+                    {selectedMetadata?.freshness || 'Unknown'}
                   </dd>
                 </div>
               </dl>
+              <details className="radar-more-details">
+                <summary>More details</summary>
+                <dl>
+                  <div>
+                    <dt>Registration</dt>
+                    <dd>{value(selectedMetadata?.registration)}</dd>
+                  </div>
+                  <div>
+                    <dt>Type / model</dt>
+                    <dd>{value(selectedMetadata?.type)}</dd>
+                  </div>
+                  <div>
+                    <dt>Operator</dt>
+                    <dd>{value(selectedMetadata?.operator)}</dd>
+                  </div>
+                  <div>
+                    <dt>Origin / destination</dt>
+                    <dd>
+                      {value(selectedMetadata?.origin)} /{' '}
+                      {value(selectedMetadata?.destination)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Squawk</dt>
+                    <dd>{value(selectedMetadata?.squawk)}</dd>
+                  </div>
+                  <div>
+                    <dt>Flyby probability</dt>
+                    <dd>{value(selected.flyby_probability, '%')}</dd>
+                  </div>
+                  <div>
+                    <dt>Prediction</dt>
+                    <dd>
+                      {value(selected.prediction_confidence, '% confidence')}
+                    </dd>
+                  </div>
+                </dl>
+              </details>
               <a href={selected.fr24_url} target="_blank" rel="noreferrer">
                 Open flight details
               </a>
@@ -565,6 +607,12 @@ export function RadarScreen() {
         <span>Altitude {ALTITUDE_FILTER_LABELS[altitudeFilter]}</span>
         <span>GPS {record ? (record.gps.fix ? 'FIX' : 'NO FIX') : '—'}</span>
         <span>Traffic {traffic.unreachable ? 'UNREACHABLE' : traffic.stale ? 'STALE' : 'LIVE'}</span>
+        <span>
+          Data{' '}
+          {traffic.feed.updated_at
+            ? `${Math.max(0, Math.round((Date.now() - traffic.feed.updated_at) / 1000))}s`
+            : '—'}
+        </span>
         <span>Range {range} km</span>
         <span>Sweep {paused ? 'PAUSED' : 'RUNNING'}</span>
         <span>SAT {value(record?.gps.satellites)}</span>

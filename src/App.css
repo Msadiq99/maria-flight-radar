@@ -365,6 +365,19 @@
   font-weight: 700;
   letter-spacing: 0.12em;
 }
+.radar-more-details {
+  margin: 0.65rem 0;
+}
+.radar-more-details summary {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  color: #7ee8f3;
+  cursor: pointer;
+}
+.radar-more-details dl {
+  margin-top: 0;
+}
 .radar-empty {
   color: #8baab2;
   padding: 2rem 0;
