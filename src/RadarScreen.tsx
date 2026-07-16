@@ -15,6 +15,13 @@ import {
   type AltitudeFilter,
 } from './radar/altitudeFilter';
 import {
+  ALERT_ZONE_LABELS,
+  DEFAULT_ALERT_ZONES,
+  classifyAlertZone,
+  validateAlertZones,
+  type AlertZoneThresholds,
+} from './radar/alertZones';
+import {
   DEFAULT_RADAR_PREFERENCES,
   loadRadarPreferences,
   saveRadarPreferences,
@@ -48,6 +55,9 @@ export function RadarScreen() {
   const paused = preferences.sweepPaused;
   const autoSelect = preferences.autoSelect;
   const altitudeFilter = preferences.altitudeFilter;
+  const [zoneDraft, setZoneDraft] = useState<AlertZoneThresholds>(
+    preferences.alertZones
+  );
   const [selectedId, setSelectedId] = useState<string | null>(
     params.get('aircraft')
   );
@@ -58,6 +68,7 @@ export function RadarScreen() {
       return resolved;
     });
   };
+  const zoneValidation = validateAlertZones(zoneDraft, range);
   const traffic = useNearbyTraffic(centerLat, centerLon, range);
   const aircraft = useMemo(
     () =>
@@ -86,6 +97,17 @@ export function RadarScreen() {
   );
   const selected =
     visibleAircraft.find((item) => item.id === selectedId) || null;
+  const selectedZone = selected
+    ? classifyAlertZone(selected.distance_km, preferences.alertZones)
+    : null;
+  const applyZoneDraft = () => {
+    if (zoneValidation) return;
+    updatePreferences({ alertZones: zoneDraft });
+  };
+  const resetZoneDraft = () => {
+    setZoneDraft(DEFAULT_ALERT_ZONES);
+    updatePreferences({ alertZones: DEFAULT_ALERT_ZONES });
+  };
 
   useEffect(() => {
     if (selected && visibleAircraft.some((item) => item.id === selected.id)) {
@@ -218,6 +240,69 @@ export function RadarScreen() {
             />{' '}
             Auto-select nearest
           </label>
+          <details className="radar-zone-settings">
+            <summary>Alert zones</summary>
+            <div className="radar-zone-grid">
+              <label>
+                Critical km
+                <input
+                  type="number"
+                  min="0.1"
+                  step="0.1"
+                  value={zoneDraft.criticalKm}
+                  onChange={(event) =>
+                    setZoneDraft((current) => ({
+                      ...current,
+                      criticalKm: Number(event.target.value),
+                    }))
+                  }
+                />
+              </label>
+              <label>
+                Warning km
+                <input
+                  type="number"
+                  min="0.2"
+                  step="0.1"
+                  value={zoneDraft.warningKm}
+                  onChange={(event) =>
+                    setZoneDraft((current) => ({
+                      ...current,
+                      warningKm: Number(event.target.value),
+                    }))
+                  }
+                />
+              </label>
+              <label>
+                Advisory km
+                <input
+                  type="number"
+                  min="0.3"
+                  step="0.1"
+                  value={zoneDraft.advisoryKm}
+                  onChange={(event) =>
+                    setZoneDraft((current) => ({
+                      ...current,
+                      advisoryKm: Number(event.target.value),
+                    }))
+                  }
+                />
+              </label>
+            </div>
+            {zoneValidation ? (
+              <p className="radar-zone-error" role="alert">
+                {zoneValidation}
+              </p>
+            ) : null}
+            <div className="radar-zone-actions">
+              <button type="button" onClick={applyZoneDraft} disabled={!!zoneValidation}>
+                Apply
+              </button>
+              <button type="button" onClick={resetZoneDraft}>
+                Reset
+              </button>
+            </div>
+          </details>
           <dl>
             <div>
               <dt>Center</dt>
@@ -262,6 +347,19 @@ export function RadarScreen() {
               </g>
             ))}
             <path className="radar-axis" d="M-220 0H220M0-220V220" />
+            {[
+              ['critical', preferences.alertZones.criticalKm],
+              ['warning', preferences.alertZones.warningKm],
+              ['advisory', preferences.alertZones.advisoryKm],
+            ].map(([zone, radius]) =>
+              Number(radius) <= range ? (
+                <circle
+                  key={zone}
+                  className={`radar-zone-ring is-${zone}`}
+                  r={(220 * Number(radius)) / range}
+                />
+              ) : null
+            )}
             <text className="radar-direction" x="-5" y="-230">
               N
             </text>
@@ -314,10 +412,14 @@ export function RadarScreen() {
                 220
               );
               const alert = item.flyby_probability >= 65;
+              const zone = classifyAlertZone(
+                item.distance_km,
+                preferences.alertZones
+              );
               return (
                 <g
                   key={item.id}
-                  className={`radar-target ${selectedId === item.id ? 'is-selected' : ''} ${alert ? 'is-alert' : ''}`}
+                  className={`radar-target is-zone-${zone} ${selectedId === item.id ? 'is-selected' : ''} ${alert ? 'is-alert' : ''}`}
                   transform={`translate(${p.x} ${p.y}) rotate(${item.heading_deg})`}
                   onClick={() => setSelectedId(item.id)}
                   onKeyDown={(event) => {
@@ -342,6 +444,13 @@ export function RadarScreen() {
               );
             })}
           </svg>
+          <div className="radar-zone-legend" aria-label="Alert-zone legend">
+            {Object.entries(ALERT_ZONE_LABELS).map(([zone, label]) => (
+              <span key={zone} className={`is-zone-${zone}`}>
+                <i aria-hidden="true" /> {label}
+              </span>
+            ))}
+          </div>
           <div className="radar-controls">
             <button
               type="button"
@@ -378,9 +487,13 @@ export function RadarScreen() {
             <>
               <h2>{selected.callsign}</h2>
               <p className="radar-alert-badge">
-                {selected.flyby_probability >= 65 ? 'PRIORITY' : 'TRACKING'}
+                {selectedZone ? ALERT_ZONE_LABELS[selectedZone] : 'TRACKING'} zone
               </p>
               <dl>
+                <div>
+                  <dt>Alert zone</dt>
+                  <dd>{selectedZone ? ALERT_ZONE_LABELS[selectedZone] : '—'}</dd>
+                </div>
                 <div>
                   <dt>Type / airline</dt>
                   <dd>

@@ -115,7 +115,7 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0.35rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
 }
 .radar-metrics span,
 .radar-panel label {
@@ -129,6 +129,7 @@
   color: #74f5ac;
   font-size: 1.3rem;
 }
+.radar-panel input,
 .radar-panel select {
   min-height: 44px;
   padding: 0.5rem;
@@ -136,11 +137,51 @@
   color: #d8f7ff;
   border: 1px solid #286276;
 }
+.radar-count {
+  margin: 0 0 0.75rem;
+  color: #b6d5dc;
+  font-size: 0.78rem;
+}
 .radar-check {
   flex-direction: row !important;
   align-items: center;
   min-height: 44px;
   color: #b6d5dc !important;
+}
+.radar-zone-settings {
+  margin-top: 0.6rem;
+  border-top: 1px solid #143443;
+  border-bottom: 1px solid #143443;
+  padding: 0.55rem 0;
+}
+.radar-zone-settings summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: #d8f7ff;
+  cursor: pointer;
+}
+.radar-zone-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+.radar-zone-actions {
+  display: flex;
+  gap: 0.45rem;
+  margin-top: 0.5rem;
+}
+.radar-zone-actions button {
+  min-height: 40px;
+  padding: 0.45rem 0.6rem;
+  background: #0d2633;
+  border: 1px solid #287487;
+  color: #d8f7ff;
+}
+.radar-zone-error {
+  margin: 0.5rem 0 0;
+  color: #ffb4ba;
+  font-size: 0.75rem;
 }
 .radar-panel dl {
   margin-top: 1.25rem;
@@ -187,6 +228,22 @@
   stroke: #20636e;
   stroke-width: 1;
 }
+.radar-zone-ring {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-dasharray: 6 5;
+  opacity: 0.9;
+  pointer-events: none;
+}
+.radar-zone-ring.is-critical {
+  stroke: #ff5e68;
+}
+.radar-zone-ring.is-warning {
+  stroke: #f4d35e;
+}
+.radar-zone-ring.is-advisory {
+  stroke: #65cbd2;
+}
 .radar-direction,
 .radar-range-label {
   fill: #65cbd2;
@@ -221,6 +278,15 @@
   stroke: #c9ffe2;
   stroke-width: 1;
 }
+.radar-target.is-zone-critical path {
+  fill: #ff5e68;
+}
+.radar-target.is-zone-warning path {
+  fill: #f4d35e;
+}
+.radar-target.is-zone-advisory path {
+  fill: #5ed7ff;
+}
 .radar-target text {
   fill: #a4e9b9;
   font-size: 9px;
@@ -254,6 +320,40 @@
   color: #d8f7ff;
   text-decoration: none;
   cursor: pointer;
+}
+.radar-controls button:disabled,
+.radar-zone-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+.radar-zone-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.45rem;
+  margin-top: 0.65rem;
+  color: #b6d5dc;
+  font-size: 0.72rem;
+}
+.radar-zone-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.radar-zone-legend i {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: #55ed9a;
+}
+.radar-zone-legend .is-zone-critical i {
+  background: #ff5e68;
+}
+.radar-zone-legend .is-zone-warning i {
+  background: #f4d35e;
+}
+.radar-zone-legend .is-zone-advisory i {
+  background: #5ed7ff;
 }
 .radar-console :is(a, button, select, input):focus-visible {
   outline: 3px solid #f4d35e;
