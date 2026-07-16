@@ -1,5 +1,6 @@
 #include <unity.h>
 
+#include "radar_terminal/diagnostic_model.h"
 #include "radar_terminal/radar_model.h"
 
 using namespace MariaRadar;
@@ -87,6 +88,44 @@ void test_vertical_state_and_preferences() {
   TEST_ASSERT_FALSE(validPreferences(preferences));
 }
 
+void test_diagnostic_calibration_and_commands() {
+  CalibrationBounds bounds{};
+  TEST_ASSERT_TRUE(validCalibrationBounds(bounds));
+  bounds.maxX = 500;
+  TEST_ASSERT_FALSE(validCalibrationBounds(bounds));
+  TEST_ASSERT_EQUAL_INT16(159, mapCalibrated(2050, 300, 3800, 0, 319));
+  TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(SerialCommand::Display),
+                          static_cast<uint8_t>(parseSerialCommand("display\n")));
+  TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DiagnosticScreen::RadarDemo),
+                          static_cast<uint8_t>(screenForCommand(SerialCommand::Demo)));
+}
+
+void test_diagnostic_status_classification_and_rgb() {
+  TEST_ASSERT_EQUAL_UINT8(
+      static_cast<uint8_t>(BackendDiagnosticState::GpsUnavailable),
+      static_cast<uint8_t>(classifyBackendStatus(0, false, true, false, false)));
+  TEST_ASSERT_EQUAL_UINT8(
+      static_cast<uint8_t>(BackendDiagnosticState::HttpOk),
+      static_cast<uint8_t>(classifyBackendStatus(200, true, true, true, false)));
+  TEST_ASSERT_EQUAL_UINT8(
+      static_cast<uint8_t>(BackendDiagnosticState::JsonMalformed),
+      static_cast<uint8_t>(classifyBackendStatus(200, false, true, true, false)));
+  TEST_ASSERT_EQUAL_UINT8(
+      static_cast<uint8_t>(WifiDiagnosticState::Connected),
+      static_cast<uint8_t>(classifyWifiStatus(true, false, false)));
+  TEST_ASSERT_FALSE(rgbOutputLevel(true, true));
+  TEST_ASSERT_TRUE(rgbOutputLevel(false, true));
+}
+
+void test_demo_aircraft_motion_is_bounded() {
+  DemoAircraft first = demoAircraftAt(3, 0);
+  DemoAircraft moved = demoAircraftAt(3, 1000);
+  TEST_ASSERT_NOT_EQUAL(first.bearingDeg, moved.bearingDeg);
+  TEST_ASSERT_TRUE(moved.distanceKm > 0);
+  ScreenPoint clipped = projectTarget(moved.bearingDeg, 250, 50, 160, 120, 80);
+  TEST_ASSERT_FALSE(clipped.visible);
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_cardinal_projection);
@@ -95,5 +134,8 @@ int main() {
   RUN_TEST(test_altitude_filtering_and_selection);
   RUN_TEST(test_alert_boundaries_and_freshness);
   RUN_TEST(test_vertical_state_and_preferences);
+  RUN_TEST(test_diagnostic_calibration_and_commands);
+  RUN_TEST(test_diagnostic_status_classification_and_rgb);
+  RUN_TEST(test_demo_aircraft_motion_is_bounded);
   return UNITY_END();
 }
