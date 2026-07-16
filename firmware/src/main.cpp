@@ -1,14 +1,24 @@
 #include <Arduino.h>
-#include <M5Unified.h>
 #include <WiFi.h>
 #include <esp_task_wdt.h>
 
 #include "config.h"
 #include "gps_reader.h"
-#include "imu_reader.h"
 #include "pins.h"
-#include "telemetry_client.h"
 #include "wifi_manager.h"
+
+#ifdef MARIA_ESP32_28_RADAR_TERMINAL
+#include "board_profiles/esp32_2432s028r.h"
+#include "radar_terminal/radar_screen.h"
+#include "radar_terminal/radar_settings.h"
+#include "radar_terminal/touch_controller.h"
+#include "radar_terminal/traffic_client.h"
+#else
+#include <M5Unified.h>
+
+#include "imu_reader.h"
+#include "telemetry_client.h"
+#endif
 
 #ifndef SIMULATE_GPS_WHEN_NO_FIX
 #define SIMULATE_GPS_WHEN_NO_FIX false
@@ -16,6 +26,154 @@
 
 WifiManager wifiManager;
 GpsReader gpsReader;
+
+#ifdef MARIA_ESP32_28_RADAR_TERMINAL
+
+MariaRadar::RadarSettings radarSettings;
+MariaRadar::RadarScreen radarScreen;
+MariaRadar::TouchController touchController;
+MariaRadar::TrafficClient trafficClient;
+
+MariaRadar::TerminalScreen terminalScreen = MariaRadar::TerminalScreen::Radar;
+uint32_t lastDisplayAtMs = 0;
+int selectedAircraft = -1;
+
+GpsFix simulatedFix() {
+  const float step = (millis() / 1000) % 240;
+  GpsFix fix;
+  fix.valid = true;
+  fix.latitude = 24.7136 + sin(step * 0.02f) * 0.01f;
+  fix.longitude = 46.6753 + cos(step * 0.02f) * 0.01f;
+  fix.altitudeMeters = 612;
+  fix.speedKmph = 0;
+  fix.courseDeg = 0;
+  fix.satellites = 9;
+  return fix;
+}
+
+uint16_t nextRange(uint16_t current) {
+  if (current == 25) return 50;
+  if (current == 50) return 100;
+  if (current == 100) return 200;
+  return 25;
+}
+
+void selectRelative(int step, const MariaRadar::RadarPreferences &preferences) {
+  const MariaRadar::Aircraft *aircraft = trafficClient.aircraft();
+  const uint8_t count = trafficClient.count();
+  if (count == 0) {
+    selectedAircraft = -1;
+    return;
+  }
+  int start = selectedAircraft < 0 ? 0 : selectedAircraft;
+  for (uint8_t attempt = 0; attempt < count; attempt++) {
+    int candidate = (start + step * (attempt + 1) + count) % count;
+    if (MariaRadar::altitudeMatches(aircraft[candidate],
+                                    preferences.altitudeFilter)) {
+      selectedAircraft = candidate;
+      return;
+    }
+  }
+  selectedAircraft = -1;
+}
+
+void handleTouch(const MariaRadar::TouchEvent &event) {
+  if (event.action == MariaRadar::TouchAction::None) return;
+
+  MariaRadar::RadarPreferences preferences = radarSettings.get();
+  switch (event.action) {
+    case MariaRadar::TouchAction::Previous:
+      selectRelative(-1, preferences);
+      break;
+    case MariaRadar::TouchAction::Next:
+      selectRelative(1, preferences);
+      break;
+    case MariaRadar::TouchAction::Range:
+      preferences.rangeKm = nextRange(preferences.rangeKm);
+      radarSettings.save(preferences);
+      break;
+    case MariaRadar::TouchAction::Pause:
+      preferences.sweepPaused = !preferences.sweepPaused;
+      radarSettings.save(preferences);
+      break;
+    case MariaRadar::TouchAction::Details:
+      terminalScreen = terminalScreen == MariaRadar::TerminalScreen::Details
+                           ? MariaRadar::TerminalScreen::Radar
+                           : MariaRadar::TerminalScreen::Details;
+      break;
+    case MariaRadar::TouchAction::Status:
+      terminalScreen = MariaRadar::TerminalScreen::Status;
+      break;
+    case MariaRadar::TouchAction::Settings:
+      terminalScreen = MariaRadar::TerminalScreen::Settings;
+      break;
+    case MariaRadar::TouchAction::Back:
+      terminalScreen = MariaRadar::TerminalScreen::Radar;
+      break;
+    case MariaRadar::TouchAction::ToggleLabels:
+      preferences.labelsEnabled = !preferences.labelsEnabled;
+      radarSettings.save(preferences);
+      break;
+    case MariaRadar::TouchAction::ToggleTrails:
+      preferences.trailsEnabled = !preferences.trailsEnabled;
+      radarSettings.save(preferences);
+      break;
+    case MariaRadar::TouchAction::FactoryReset:
+      radarSettings.reset();
+      terminalScreen = MariaRadar::TerminalScreen::Radar;
+      break;
+    case MariaRadar::TouchAction::None:
+      break;
+  }
+  lastDisplayAtMs = 0;
+}
+
+void setup() {
+  Serial.begin(MariaBoard::kSerialBaud);
+  esp_task_wdt_init(10, true);
+  esp_task_wdt_add(nullptr);
+  radarSettings.begin();
+  radarScreen.begin();
+  touchController.begin();
+  gpsReader.begin(Serial2, GPS_RX_PIN, GPS_TX_PIN, GPS_BAUD);
+  wifiManager.begin(WIFI_SSID, WIFI_PASSWORD);
+  trafficClient.begin(API_HOST, API_KEY);
+  Serial.printf("[board] %s %s\n", MariaBoard::kBoardName,
+                MariaBoard::kValidationStatus);
+}
+
+void loop() {
+  esp_task_wdt_reset();
+  wifiManager.poll();
+  gpsReader.poll();
+
+  uint32_t now = millis();
+  GpsFix fix = gpsReader.currentFix();
+  if (SIMULATE_GPS_WHEN_NO_FIX && !fix.valid) {
+    fix = simulatedFix();
+  }
+
+  MariaRadar::RadarPreferences preferences = radarSettings.get();
+  handleTouch(touchController.poll(preferences));
+  preferences = radarSettings.get();
+
+  trafficClient.poll(wifiManager.isConnected(), fix, preferences.rangeKm, now);
+  selectedAircraft = MariaRadar::selectedAfterFiltering(
+      trafficClient.aircraft(), trafficClient.count(), selectedAircraft,
+      preferences.altitudeFilter);
+
+  if (now - lastDisplayAtMs >= (preferences.sweepPaused ? 1000 : 120)) {
+    lastDisplayAtMs = now;
+    radarScreen.draw(terminalScreen, preferences, trafficClient.aircraft(),
+                     trafficClient.count(), selectedAircraft, fix,
+                     trafficClient.state(now, wifiManager.isConnected(),
+                                         fix.valid),
+                     now);
+  }
+}
+
+#else
+
 ImuReader imuReader;
 TelemetryClient telemetryClient;
 
@@ -163,3 +321,5 @@ void loop() {
     drawStatus(fix, imu, lastHttpStatus);
   }
 }
+
+#endif
