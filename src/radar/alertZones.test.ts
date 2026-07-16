@@ -22,24 +22,26 @@ describe('alert zones', () => {
   });
 
   it('rejects invalid threshold order', () => {
-    expect(validateAlertZones({ criticalKm: 0, warningKm: 15, advisoryKm: 30 }, 50)).toMatch(
-      /greater/
-    );
-    expect(validateAlertZones({ criticalKm: 15, warningKm: 5, advisoryKm: 30 }, 50)).toMatch(
-      /Critical/
-    );
-    expect(validateAlertZones({ criticalKm: 5, warningKm: 30, advisoryKm: 15 }, 50)).toMatch(
-      /Warning/
-    );
+    expect(
+      validateAlertZones({ criticalKm: 0, warningKm: 15, advisoryKm: 30 }, 50)
+    ).toMatch(/greater/);
+    expect(
+      validateAlertZones({ criticalKm: 15, warningKm: 5, advisoryKm: 30 }, 50)
+    ).toMatch(/Critical/);
+    expect(
+      validateAlertZones({ criticalKm: 5, warningKm: 30, advisoryKm: 15 }, 50)
+    ).toMatch(/Warning/);
   });
 
   it('rejects advisory threshold larger than active range', () => {
-    expect(validateAlertZones(DEFAULT_ALERT_ZONES, 25)).toMatch(/active radar range/);
+    expect(validateAlertZones(DEFAULT_ALERT_ZONES, 25)).toMatch(
+      /active radar range/
+    );
   });
 
   it('resets invalid stored values to defaults', () => {
-    expect(sanitizeAlertZones({ criticalKm: 10, warningKm: 5, advisoryKm: 30 }, 50)).toEqual(
-      DEFAULT_ALERT_ZONES
-    );
+    expect(
+      sanitizeAlertZones({ criticalKm: 10, warningKm: 5, advisoryKm: 30 }, 50)
+    ).toEqual(DEFAULT_ALERT_ZONES);
   });
 });

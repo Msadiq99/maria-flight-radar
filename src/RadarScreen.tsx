@@ -122,7 +122,10 @@ export function RadarScreen() {
     }
     if (autoSelect) {
       setSelectedId(nearestVisibleAircraft(visibleAircraft)?.id || null);
-    } else if (selectedId && !visibleAircraft.some((item) => item.id === selectedId)) {
+    } else if (
+      selectedId &&
+      !visibleAircraft.some((item) => item.id === selectedId)
+    ) {
       setSelectedId(null);
     }
   }, [autoSelect, selected, selectedId, visibleAircraft]);
@@ -134,7 +137,9 @@ export function RadarScreen() {
       visibleAircraft.findIndex((item) => item.id === selectedId)
     );
     setSelectedId(
-      visibleAircraft[(index + step + visibleAircraft.length) % visibleAircraft.length].id
+      visibleAircraft[
+        (index + step + visibleAircraft.length) % visibleAircraft.length
+      ].id
     );
   };
   const statusLabel = traffic.unreachable
@@ -302,7 +307,11 @@ export function RadarScreen() {
               </p>
             ) : null}
             <div className="radar-zone-actions">
-              <button type="button" onClick={applyZoneDraft} disabled={!!zoneValidation}>
+              <button
+                type="button"
+                onClick={applyZoneDraft}
+                disabled={!!zoneValidation}
+              >
                 Apply
               </button>
               <button type="button" onClick={resetZoneDraft}>
@@ -504,7 +513,10 @@ export function RadarScreen() {
                 </div>
                 <div>
                   <dt>Callsign / ICAO</dt>
-                  <dd>{value(selectedMetadata?.callsign)} / {value(selectedMetadata?.icao)}</dd>
+                  <dd>
+                    {value(selectedMetadata?.callsign)} /{' '}
+                    {value(selectedMetadata?.icao)}
+                  </dd>
                 </div>
                 <div>
                   <dt>Altitude</dt>
@@ -536,8 +548,8 @@ export function RadarScreen() {
                   <dd>
                     {selectedMetadata?.updateAge === null
                       ? '—'
-                      : `${selectedMetadata?.updateAge}s ago`} ·{' '}
-                    {selectedMetadata?.freshness || 'Unknown'}
+                      : `${selectedMetadata?.updateAge}s ago`}{' '}
+                    · {selectedMetadata?.freshness || 'Unknown'}
                   </dd>
                 </div>
               </dl>
@@ -606,7 +618,14 @@ export function RadarScreen() {
         </span>
         <span>Altitude {ALTITUDE_FILTER_LABELS[altitudeFilter]}</span>
         <span>GPS {record ? (record.gps.fix ? 'FIX' : 'NO FIX') : '—'}</span>
-        <span>Traffic {traffic.unreachable ? 'UNREACHABLE' : traffic.stale ? 'STALE' : 'LIVE'}</span>
+        <span>
+          Traffic{' '}
+          {traffic.unreachable
+            ? 'UNREACHABLE'
+            : traffic.stale
+              ? 'STALE'
+              : 'LIVE'}
+        </span>
         <span>
           Data{' '}
           {traffic.feed.updated_at

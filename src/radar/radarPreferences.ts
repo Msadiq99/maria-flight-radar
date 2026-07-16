@@ -1,5 +1,9 @@
 import type { RadarRange } from '../radarGeometry';
-import { DEFAULT_ALERT_ZONES, sanitizeAlertZones, type AlertZoneThresholds } from './alertZones';
+import {
+  DEFAULT_ALERT_ZONES,
+  sanitizeAlertZones,
+  type AlertZoneThresholds,
+} from './alertZones';
 import { isAltitudeFilter, type AltitudeFilter } from './altitudeFilter';
 
 export type RadarPreferencesV2 = {
@@ -58,19 +62,19 @@ export function normalizeRadarPreferences(
     showLabels:
       typeof source.showLabels === 'boolean'
         ? source.showLabels
-        : legacy.showLabels ?? DEFAULT_RADAR_PREFERENCES.showLabels,
+        : (legacy.showLabels ?? DEFAULT_RADAR_PREFERENCES.showLabels),
     showTrails:
       typeof source.showTrails === 'boolean'
         ? source.showTrails
-        : legacy.showTrails ?? DEFAULT_RADAR_PREFERENCES.showTrails,
+        : (legacy.showTrails ?? DEFAULT_RADAR_PREFERENCES.showTrails),
     sweepPaused:
       typeof source.sweepPaused === 'boolean'
         ? source.sweepPaused
-        : legacy.sweepPaused ?? DEFAULT_RADAR_PREFERENCES.sweepPaused,
+        : (legacy.sweepPaused ?? DEFAULT_RADAR_PREFERENCES.sweepPaused),
     autoSelect:
       typeof source.autoSelect === 'boolean'
         ? source.autoSelect
-        : legacy.autoSelect ?? DEFAULT_RADAR_PREFERENCES.autoSelect,
+        : (legacy.autoSelect ?? DEFAULT_RADAR_PREFERENCES.autoSelect),
     altitudeFilter: isAltitudeFilter(source.altitudeFilter)
       ? source.altitudeFilter
       : DEFAULT_RADAR_PREFERENCES.altitudeFilter,
@@ -80,11 +84,26 @@ export function normalizeRadarPreferences(
 
 export function loadRadarPreferences(): RadarPreferencesV2 {
   const legacy = {
-    rangeKm: readLegacy<RadarRange>('maria.radar.range', DEFAULT_RADAR_PREFERENCES.rangeKm),
-    showLabels: readLegacy('maria.radar.labels', DEFAULT_RADAR_PREFERENCES.showLabels),
-    showTrails: readLegacy('maria.radar.trails', DEFAULT_RADAR_PREFERENCES.showTrails),
-    sweepPaused: readLegacy('maria.radar.paused', DEFAULT_RADAR_PREFERENCES.sweepPaused),
-    autoSelect: readLegacy('maria.radar.auto-select', DEFAULT_RADAR_PREFERENCES.autoSelect),
+    rangeKm: readLegacy<RadarRange>(
+      'maria.radar.range',
+      DEFAULT_RADAR_PREFERENCES.rangeKm
+    ),
+    showLabels: readLegacy(
+      'maria.radar.labels',
+      DEFAULT_RADAR_PREFERENCES.showLabels
+    ),
+    showTrails: readLegacy(
+      'maria.radar.trails',
+      DEFAULT_RADAR_PREFERENCES.showTrails
+    ),
+    sweepPaused: readLegacy(
+      'maria.radar.paused',
+      DEFAULT_RADAR_PREFERENCES.sweepPaused
+    ),
+    autoSelect: readLegacy(
+      'maria.radar.auto-select',
+      DEFAULT_RADAR_PREFERENCES.autoSelect
+    ),
   };
   try {
     return normalizeRadarPreferences(

@@ -28,7 +28,10 @@ export function verticalState(value: unknown): VerticalState {
   return 'Level';
 }
 
-export function freshnessFromTimestamp(value: unknown, now = Date.now()): Freshness {
+export function freshnessFromTimestamp(
+  value: unknown,
+  now = Date.now()
+): Freshness {
   const timestamp = parseFiniteNumber(value);
   if (timestamp === null || timestamp <= 0) return 'unknown';
   const age = Math.max(0, now - timestamp);

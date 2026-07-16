@@ -21,20 +21,20 @@ describe('altitude filtering', () => {
 
   it('matches every filter category', () => {
     expect(filterAircraftByAltitude(aircraft, 'all')).toHaveLength(6);
-    expect(filterAircraftByAltitude(aircraft, 'groundUnknown').map((item) => item.id)).toEqual([
-      'unknown',
-      'ground',
-      'bad',
-    ]);
-    expect(filterAircraftByAltitude(aircraft, 'below10000').map((item) => item.id)).toEqual([
-      'low',
-    ]);
-    expect(filterAircraftByAltitude(aircraft, 'between10000And30000').map((item) => item.id)).toEqual([
-      'mid',
-    ]);
-    expect(filterAircraftByAltitude(aircraft, 'above30000').map((item) => item.id)).toEqual([
-      'high',
-    ]);
+    expect(
+      filterAircraftByAltitude(aircraft, 'groundUnknown').map((item) => item.id)
+    ).toEqual(['unknown', 'ground', 'bad']);
+    expect(
+      filterAircraftByAltitude(aircraft, 'below10000').map((item) => item.id)
+    ).toEqual(['low']);
+    expect(
+      filterAircraftByAltitude(aircraft, 'between10000And30000').map(
+        (item) => item.id
+      )
+    ).toEqual(['mid']);
+    expect(
+      filterAircraftByAltitude(aircraft, 'above30000').map((item) => item.id)
+    ).toEqual(['high']);
   });
 
   it('selects the nearest visible target when filtering hides the current one', () => {

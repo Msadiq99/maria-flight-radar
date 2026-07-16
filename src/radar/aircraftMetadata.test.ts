@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { freshnessFromTimestamp, selectedAircraftMetadata, verticalState } from './aircraftMetadata';
+import {
+  freshnessFromTimestamp,
+  selectedAircraftMetadata,
+  verticalState,
+} from './aircraftMetadata';
 import type { FlightPrediction } from '../flightIntel';
 
 const baseAircraft = {
@@ -33,7 +37,13 @@ const baseAircraft = {
 
 describe('aircraft metadata', () => {
   it('normalizes display values and numeric strings', () => {
-    const metadata = selectedAircraftMetadata(baseAircraft, 25, 54.9, 'warning', 11_000);
+    const metadata = selectedAircraftMetadata(
+      baseAircraft,
+      25,
+      54.9,
+      'warning',
+      11_000
+    );
     expect(metadata.title).toBe('MARIA1');
     expect(metadata.altitude).toBe('10,000 ft');
     expect(metadata.groundSpeed).toBe('240 km/h');

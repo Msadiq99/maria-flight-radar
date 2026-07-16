@@ -64,8 +64,10 @@ export function nearestVisibleAircraft<T extends AltitudeAircraft>(
 ): T | null {
   return (
     [...aircraft].sort((a, b) => {
-      const aDistance = parseFiniteNumber(a.distance_km) ?? Number.POSITIVE_INFINITY;
-      const bDistance = parseFiniteNumber(b.distance_km) ?? Number.POSITIVE_INFINITY;
+      const aDistance =
+        parseFiniteNumber(a.distance_km) ?? Number.POSITIVE_INFINITY;
+      const bDistance =
+        parseFiniteNumber(b.distance_km) ?? Number.POSITIVE_INFINITY;
       return aDistance - bDistance;
     })[0] || null
   );
