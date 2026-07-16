@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 import { DeviceMap } from './DeviceMap';
+import { RadarScreen } from './RadarScreen';
+import { MapScreen } from './MapScreen';
 import { DEVICE_ID } from './config';
 import { useAirports, useDevices } from './devices';
 import { exportTelemetryCsv, exportTelemetryGeoJson } from './exportData';
@@ -163,7 +165,7 @@ function SortButton({
   );
 }
 
-function App() {
+function DashboardScreen() {
   const sharedParams = useMemo(
     () => new URLSearchParams(window.location.search),
     []
@@ -1032,6 +1034,13 @@ function App() {
       </section>
     </main>
   );
+}
+
+function App() {
+  const path = window.location.pathname;
+  if (path === '/' || path === '/radar') return <RadarScreen />;
+  if (path === '/map') return <MapScreen />;
+  return <DashboardScreen />;
 }
 
 export default App;
