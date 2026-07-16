@@ -32,6 +32,8 @@ enum class SerialCommand : uint8_t {
   Demo,
   Normal,
   Reboot,
+  Retest,
+  WifiClear,
 };
 
 enum class BackendDiagnosticState : uint8_t {

@@ -118,6 +118,12 @@ void DiagnosticApp::begin(WifiManager *wifiManager) {
 DiagnosticScreen DiagnosticApp::screen() const { return screen_; }
 
 void DiagnosticApp::setScreen(DiagnosticScreen screen) {
+  if (screen_ == DiagnosticScreen::Led && screen != DiagnosticScreen::Led) {
+    const bool activeLow = MariaBoard::kRgbActiveLevel == LOW;
+    digitalWrite(MariaBoard::kRgbLedRed, rgbOutputLevel(activeLow, false));
+    digitalWrite(MariaBoard::kRgbLedGreen, rgbOutputLevel(activeLow, false));
+    digitalWrite(MariaBoard::kRgbLedBlue, rgbOutputLevel(activeLow, false));
+  }
   screen_ = screen;
   lastDrawMs_ = 0;
   Serial.printf("[diag] screen=%s\n", screenName(screen_));
@@ -370,6 +376,7 @@ void DiagnosticApp::drawWifiTest() {
   diagTft.printf("DNS: %s\n", WiFi.dnsIP().toString().c_str());
   diagTft.printf("MAC: %s\n", WiFi.macAddress().c_str());
   diagTft.printf("RSSI: %d dBm\n", status == WL_CONNECTED ? WiFi.RSSI() : 0);
+  diagTft.println("Serial: wifi / wifi-clear");
   int networks = WiFi.scanComplete();
   if (networks == WIFI_SCAN_FAILED) WiFi.scanNetworks(true);
   if (networks >= 0) {
@@ -494,6 +501,7 @@ void DiagnosticApp::drawSpeakerTest() {
   drawHeader("SPEAKER TEST");
   if (MariaBoard::kSpeakerPin < 0) {
     diagTft.drawString("Not tested - pin unverified", 8, 40);
+    diagTft.drawString("No tone generated.", 8, 66);
     return;
   }
   beep(880, 120);
@@ -540,10 +548,19 @@ void DiagnosticApp::handleSerial() {
       SerialCommand command = parseSerialCommand(serialBuffer_);
       serialLength_ = 0;
       if (command == SerialCommand::Help) {
-        Serial.println("help info display touch wifi backend sd led speaker demo normal reboot");
+        Serial.println("help info display touch wifi backend sd led speaker demo normal reboot retest wifi-clear");
       } else if (command == SerialCommand::Reboot) {
         Serial.println("[diag] rebooting");
         ESP.restart();
+      } else if (command == SerialCommand::Retest) {
+        strlcpy(backendMessage_, "untested", sizeof(backendMessage_));
+        strlcpy(sdMessage_, "untested", sizeof(sdMessage_));
+        lastDrawMs_ = 0;
+        Serial.println("[diag] retest queued");
+      } else if (command == SerialCommand::WifiClear) {
+        WiFi.disconnect(true, true);
+        lastDrawMs_ = 0;
+        Serial.println("[diag] wifi settings cleared");
       } else if (command == SerialCommand::Unknown) {
         Serial.println("[diag] unknown command");
       } else {

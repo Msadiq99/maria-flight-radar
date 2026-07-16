@@ -32,6 +32,8 @@ SerialCommand parseSerialCommand(const char *command) {
   if (equals(command, "demo")) return SerialCommand::Demo;
   if (equals(command, "normal")) return SerialCommand::Normal;
   if (equals(command, "reboot")) return SerialCommand::Reboot;
+  if (equals(command, "retest")) return SerialCommand::Retest;
+  if (equals(command, "wifi-clear")) return SerialCommand::WifiClear;
   return SerialCommand::Unknown;
 }
 
@@ -60,6 +62,8 @@ DiagnosticScreen screenForCommand(SerialCommand command) {
     case SerialCommand::Help:
     case SerialCommand::Reboot:
     case SerialCommand::Unknown:
+    case SerialCommand::Retest:
+    case SerialCommand::WifiClear:
       return DiagnosticScreen::Menu;
   }
   return DiagnosticScreen::Menu;
