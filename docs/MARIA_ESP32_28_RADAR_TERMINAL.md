@@ -11,18 +11,19 @@ pio run -e maria-esp32-2432s028r
 Expected hardware family:
 
 - ESP32 2.8-inch integrated display board
-- Expected marking: ESP32-2432S028R or compatible revision
+- Confirmed PCB marking from photos: `2.8 LCD Display ESP32-32E 240x320 Resistance Touch`
 - Expected display: 320x240 landscape, ILI9341
 - Expected touch: XPT2046 resistive touchscreen
 
-Hardware validation status: compiled only. No physical ESP32-2432S028R board
-was connected or tested during this implementation.
+Hardware validation status: partially verified from PCB photos. No powered
+ESP32-32E board test has been performed by Codex.
 
 ## PCB Revision Assumptions
 
-The profile is a clearly marked template for common ESP32-2432S028R / CYD-style
-boards. Before flashing production hardware, inspect and record the exact PCB
-silk-screen marking, display connector revision, and touch-controller routing.
+The profile is now tied to the photo-confirmed PCB marking, but the GPIO table
+remains a template. Before flashing production hardware, inspect and record the
+exact TFT controller, touch controller, GPIO routing, display rotation,
+backlight behavior, SD routing, and speaker behavior.
 
 Do not treat the pin table below as physically validated until the board is
 connected and the first-boot checklist passes.
@@ -35,23 +36,24 @@ Pin values live in one place:
 firmware/include/board_profiles/esp32_2432s028r.h
 ```
 
-| Function             |             GPIO | Status                           |
-| -------------------- | ---------------: | -------------------------------- |
-| TFT MISO             |               12 | unverified template              |
-| TFT MOSI             |               13 | unverified template              |
-| TFT SCLK             |               14 | unverified template              |
-| TFT CS               |               15 | unverified template              |
-| TFT DC               |                2 | unverified template              |
-| TFT RST              |               -1 | unverified template              |
-| Backlight            |               21 | unverified template, active HIGH |
-| Touch MISO           |               39 | unverified template              |
-| Touch MOSI           |               32 | unverified template              |
-| Touch SCLK           |               25 | unverified template              |
-| Touch CS             |               33 | unverified template              |
-| Touch IRQ            |               36 | unverified template              |
-| RGB LED R/G/B        |      4 / 16 / 17 | unverified template              |
-| SD MISO/MOSI/SCLK/CS | 19 / 23 / 18 / 5 | unverified template              |
-| Serial monitor       |           115200 | configured                       |
+| Function             |             GPIO | Status                                     |
+| -------------------- | ---------------: | ------------------------------------------ |
+| TFT MISO             |               12 | UNVERIFIED_UNTIL_POWERED_TEST              |
+| TFT MOSI             |               13 | UNVERIFIED_UNTIL_POWERED_TEST              |
+| TFT SCLK             |               14 | UNVERIFIED_UNTIL_POWERED_TEST              |
+| TFT CS               |               15 | UNVERIFIED_UNTIL_POWERED_TEST              |
+| TFT DC               |                2 | UNVERIFIED_UNTIL_POWERED_TEST              |
+| TFT RST              |               -1 | UNVERIFIED_UNTIL_POWERED_TEST              |
+| Backlight            |               21 | UNVERIFIED_UNTIL_POWERED_TEST, active HIGH |
+| Touch MISO           |               39 | UNVERIFIED_UNTIL_POWERED_TEST              |
+| Touch MOSI           |               32 | UNVERIFIED_UNTIL_POWERED_TEST              |
+| Touch SCLK           |               25 | UNVERIFIED_UNTIL_POWERED_TEST              |
+| Touch CS             |               33 | UNVERIFIED_UNTIL_POWERED_TEST              |
+| Touch IRQ            |               36 | UNVERIFIED_UNTIL_POWERED_TEST              |
+| RGB LED R/G/B        |      4 / 16 / 17 | UNVERIFIED_UNTIL_POWERED_TEST              |
+| SD MISO/MOSI/SCLK/CS | 19 / 23 / 18 / 5 | UNVERIFIED_UNTIL_POWERED_TEST              |
+| Speaker              |               -1 | UNVERIFIED, disabled                       |
+| Serial monitor       |           115200 | configured                                 |
 
 ## Libraries
 
@@ -65,6 +67,26 @@ The new target uses:
 - `Preferences` / NVS for radar settings
 
 The existing M5StickC PLUS2 target remains on `M5Unified`.
+
+## Diagnostic Mode
+
+Diagnostic mode starts when either BOOT is held during reset or the
+`maria-esp32-2432s028r-diag` environment is flashed.
+
+Serial fallback commands:
+
+```text
+help info display touch wifi backend sd led speaker demo normal reboot retest wifi-clear
+```
+
+Documented build flags:
+
+- `MARIA_DIAGNOSTIC_MODE`
+- `MARIA_FORCE_DEMO_MODE`
+- `MARIA_DISABLE_TOUCH`
+- `MARIA_DISABLE_SD`
+- `MARIA_DISABLE_AUDIO`
+- `MARIA_VERBOSE_SERIAL`
 
 ## Screen Architecture
 
@@ -143,9 +165,8 @@ First bring-up modes:
 
 - Display-only demo: set `API_HOST` to an empty string in local `config.h`.
   The terminal renders simulated aircraft without backend traffic.
-- Touch-test mode: use the Settings and Status screen touch targets to verify
-  coordinate alignment. A dedicated raw-coordinate calibration UI is still a
-  known limitation.
+- Touch-test mode: use the diagnostic touch screen for raw/mapped coordinates
+  and five-point calibration.
 - Simulated-aircraft demo: enabled by empty `API_HOST`; uses four bounded demo
   targets.
 
@@ -165,11 +186,25 @@ cd firmware
 pio run -e maria-esp32-2432s028r
 ```
 
+Build the first-flash diagnostic image:
+
+```sh
+cd firmware
+pio run -e maria-esp32-2432s028r-diag
+```
+
 Flash the 2.8-inch terminal:
 
 ```sh
 cd firmware
 pio run -e maria-esp32-2432s028r -t upload
+```
+
+Flash the diagnostic image:
+
+```sh
+cd firmware
+pio run -e maria-esp32-2432s028r-diag -t upload
 ```
 
 Use `pio device list` to identify the serial port when auto-detection chooses
@@ -195,6 +230,11 @@ Covered logic:
 - Freshness state
 - Vertical state
 - Preference validation
+- Diagnostic serial command parsing
+- Calibration mapping and validation
+- Backend and Wi-Fi status classification
+- RGB active-level conversion
+- Simulated aircraft movement
 
 ## Performance Limits
 
@@ -210,8 +250,10 @@ Compiled targets:
 
 Measured build size for `maria-esp32-2432s028r`:
 
-- RAM: 57,268 bytes, 17.5%
-- Flash: 1,136,329 bytes, 57.8%
+- Normal RAM: 57,292 bytes, 17.5%
+- Normal flash: 1,136,541 bytes, 57.8%
+- Diagnostic RAM: 57,888 bytes, 17.7%
+- Diagnostic flash: 1,188,337 bytes, 60.5%
 
 Runtime free heap must still be measured on physical hardware.
 
@@ -248,7 +290,8 @@ Run this checklist on the actual board before calling the profile validated:
 ## Known Limitations
 
 - Pin mapping is not physically validated.
-- Raw touch calibration UI is not yet a full guided calibration screen.
+- Touch diagnostics include a five-point calibration flow, but physical
+  coordinate correctness is still unverified.
 - Trails are persisted in settings but not rendered yet on the pocket terminal.
 - Factory reset is modeled in settings code, but the UI still needs a
   long-press confirmation flow before it is exposed as a normal action.
