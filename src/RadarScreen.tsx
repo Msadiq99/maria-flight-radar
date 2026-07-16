@@ -216,6 +216,29 @@ export function RadarScreen() {
               <path d="M0 0L0-220A220 220 0 0 1 38-217Z" />
             </g>
             <circle className="radar-center" r="5" />
+            {trails && centerLat !== null && centerLon !== null
+              ? Object.entries(traffic.trails).map(([aircraftId, points]) => {
+                  const projected = points
+                    .map(([lat, lon]) => {
+                      const point = projectTarget(
+                        bearingDegrees(centerLat, centerLon, lat, lon),
+                        distanceKm(centerLat, centerLon, lat, lon),
+                        range,
+                        220
+                      );
+                      return point.visible ? `${point.x},${point.y}` : null;
+                    })
+                    .filter((point): point is string => point !== null);
+                  return projected.length > 1 ? (
+                    <polyline
+                      key={aircraftId}
+                      className="radar-trail"
+                      points={projected.join(' ')}
+                      aria-label={`Trail for ${aircraftId}`}
+                    />
+                  ) : null;
+                })
+              : null}
             {inRange.map((item) => {
               const p = projectTarget(
                 bearingDegrees(

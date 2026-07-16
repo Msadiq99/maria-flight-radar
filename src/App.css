@@ -195,6 +195,14 @@
 .radar-center {
   fill: #f4d35e;
 }
+.radar-trail {
+  fill: none;
+  stroke: #42c9a0;
+  stroke-width: 1.5;
+  stroke-dasharray: 3 4;
+  opacity: 0.65;
+  pointer-events: none;
+}
 .radar-sweep path {
   fill: #51e6aa;
   opacity: 0.13;
@@ -246,6 +254,11 @@
   color: #d8f7ff;
   text-decoration: none;
   cursor: pointer;
+}
+.radar-console :is(a, button, select, input):focus-visible {
+  outline: 3px solid #f4d35e;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 2px #071019;
 }
 .radar-alert-badge {
   color: #ff7980;
