@@ -127,6 +127,10 @@ void test_diagnostic_calibration_and_commands() {
                           static_cast<uint8_t>(parseSerialCommand("display\n")));
   TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DiagnosticScreen::RadarDemo),
                           static_cast<uint8_t>(screenForCommand(SerialCommand::Demo)));
+  TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DiagnosticScreen::Summary),
+                          static_cast<uint8_t>(screenForCommand(SerialCommand::Summary)));
+  TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(DiagnosticScreen::Normal),
+                          static_cast<uint8_t>(screenForCommand(SerialCommand::Normal)));
 }
 
 void test_diagnostic_status_classification_and_rgb() {
@@ -142,8 +146,61 @@ void test_diagnostic_status_classification_and_rgb() {
   TEST_ASSERT_EQUAL_UINT8(
       static_cast<uint8_t>(WifiDiagnosticState::Connected),
       static_cast<uint8_t>(classifyWifiStatus(true, false, false)));
+  TEST_ASSERT_EQUAL_UINT8(
+      static_cast<uint8_t>(WifiDiagnosticState::Connecting),
+      static_cast<uint8_t>(classifyWifiStatus(false, false, true)));
   TEST_ASSERT_FALSE(rgbOutputLevel(true, true));
   TEST_ASSERT_TRUE(rgbOutputLevel(false, true));
+  TEST_ASSERT_FALSE(diagnosticRgbSupported(true, false));
+  TEST_ASSERT_TRUE(diagnosticRgbSupported(false, true));
+  TEST_ASSERT_EQUAL_STRING("PASS", diagnosticStatusLabel(DiagnosticStatus::Pass));
+  TEST_ASSERT_EQUAL_STRING("UNSUP",
+                           diagnosticStatusLabel(DiagnosticStatus::Unsupported));
+  TEST_ASSERT_EQUAL_STRING("Backend",
+                           diagnosticItemLabel(DiagnosticItem::Backend));
+  TEST_ASSERT_TRUE(diagnosticStatusIsComplete(DiagnosticStatus::Skipped));
+  TEST_ASSERT_FALSE(diagnosticStatusIsComplete(DiagnosticStatus::Running));
+}
+
+void test_diagnostic_summary_readiness() {
+  DiagnosticStatus statuses[static_cast<uint8_t>(DiagnosticItem::Count)]{};
+  for (uint8_t i = 0; i < static_cast<uint8_t>(DiagnosticItem::Count); i++) {
+    statuses[i] = DiagnosticStatus::Pass;
+  }
+  statuses[static_cast<uint8_t>(DiagnosticItem::Rgb)] =
+      DiagnosticStatus::Unsupported;
+  TEST_ASSERT_TRUE(
+      diagnosticSummaryReady(statuses, static_cast<uint8_t>(DiagnosticItem::Count)));
+  statuses[static_cast<uint8_t>(DiagnosticItem::Touch)] =
+      DiagnosticStatus::NotTested;
+  TEST_ASSERT_FALSE(
+      diagnosticSummaryReady(statuses, static_cast<uint8_t>(DiagnosticItem::Count)));
+  statuses[static_cast<uint8_t>(DiagnosticItem::Touch)] = DiagnosticStatus::Pass;
+  statuses[static_cast<uint8_t>(DiagnosticItem::Backend)] = DiagnosticStatus::Fail;
+  TEST_ASSERT_FALSE(
+      diagnosticSummaryReady(statuses, static_cast<uint8_t>(DiagnosticItem::Count)));
+}
+
+void test_backend_failure_and_timeout_states() {
+  TEST_ASSERT_EQUAL_UINT8(
+      static_cast<uint8_t>(BackendDiagnosticState::WifiUnavailable),
+      static_cast<uint8_t>(classifyBackendStatus(0, false, false, true, false)));
+  TEST_ASSERT_EQUAL_UINT8(
+      static_cast<uint8_t>(BackendDiagnosticState::Timeout),
+      static_cast<uint8_t>(classifyBackendStatus(200, true, true, true, true)));
+  TEST_ASSERT_EQUAL_UINT8(
+      static_cast<uint8_t>(BackendDiagnosticState::HttpError),
+      static_cast<uint8_t>(classifyBackendStatus(503, false, true, true, false)));
+}
+
+void test_radar_demo_controls_are_deterministic() {
+  DemoAircraft first = demoAircraftAt(0, 0);
+  DemoAircraft later = demoAircraftAt(0, 5000);
+  TEST_ASSERT_NOT_EQUAL(first.bearingDeg, later.bearingDeg);
+  TEST_ASSERT_TRUE(first.distanceKm > 0);
+  TEST_ASSERT_TRUE(first.distanceKm < 10);
+  TEST_ASSERT_TRUE(terminalTouchActionAt(300, 225, 320, 240) ==
+                   TerminalTouchAction::Details);
 }
 
 void test_demo_aircraft_motion_is_bounded() {
@@ -167,6 +224,9 @@ int main() {
   RUN_TEST(test_vertical_state_and_preferences);
   RUN_TEST(test_diagnostic_calibration_and_commands);
   RUN_TEST(test_diagnostic_status_classification_and_rgb);
+  RUN_TEST(test_diagnostic_summary_readiness);
+  RUN_TEST(test_backend_failure_and_timeout_states);
+  RUN_TEST(test_radar_demo_controls_are_deterministic);
   RUN_TEST(test_demo_aircraft_motion_is_bounded);
   return UNITY_END();
 }
