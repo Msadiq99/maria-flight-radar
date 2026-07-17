@@ -120,13 +120,28 @@ Automated and API-level verification from this RC pass:
 - Detected Core2 upload chip: `ESP32-D0WDQ6-V3 (revision v3.0)`.
 - Normal-runtime observability fix committed as `211df5a`.
 
+Latest Core2 UI validation (2026-07-17):
+
+- PlatformIO 6.1.19 built the Core2 normal and diagnostic environments plus
+  both ESP32-2432S028R environments successfully.
+- The native firmware suite passed 15 of 15 tests.
+- The normal Core2 upload again completed with verified bootloader, partition,
+  and application hashes.
+- A direct 20-second serial read received `[wifi] not connected (status=1),
+  retrying...`; it did not capture the boot sequence. The interactive monitor
+  is blocked by the non-TTY validation environment, reporting
+  `termios: Operation not supported by device`.
+- `npm run dev:check` passed against the local stack. The radar snapshot used
+  deterministic simulation fallback with eight fresh aircraft, and
+  `OPENSKY_ENABLED=false`.
+
 ## Core2 Runtime Evidence
 
 ## Core2 Radar Console UI
 
 - Console layout: IMPLEMENTED.
-- Native build validation: PHYSICAL VALIDATION PENDING.
-- Flash validation: PHYSICAL VALIDATION PENDING.
+- Native build validation: PASSED (15 of 15 tests).
+- Flash validation: PASSED (hashes verified by esptool).
 - Physical display validation: PHYSICAL VALIDATION PENDING.
 
 The Core2 console now uses an original MARIA overview/radar/selected-aircraft
@@ -139,8 +154,9 @@ fallback. See `[MARIA_CORE2_RADAR_UI.md](MARIA_CORE2_RADAR_UI.md)`.
   hashes verified.
 - Chip: `ESP32-D0WDQ6-V3`, revision `v3.0`.
 - Serial-log result: PlatformIO monitor could not allocate a macOS TTY
-  (`termios: Operation not supported by device`); a direct 30-second serial
-  capture after reset received no bytes.
+  (`termios: Operation not supported by device`); a direct 20-second serial
+  capture received `[wifi] not connected (status=1), retrying...` but not the
+  boot sequence.
 - Visible screen result: not captured by the software environment; physical
   confirmation is still required.
 - Runtime mode: not established. The new firmware is designed to show `SETUP`

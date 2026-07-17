@@ -1,6 +1,7 @@
 # MARIA Core2 Radar Console
 
-Status: IMPLEMENTED. Build and physical display validation remain pending.
+Status: IMPLEMENTED. Build, native-test, and flash validation are complete;
+physical display and touch confirmation remain pending.
 
 ## Layout
 
@@ -39,7 +40,24 @@ The screen renders at most six labels; the selected label is always attempted.
 When Wi-Fi or the backend is unavailable, the existing deterministic fallback
 keeps the radar visible.
 
-## Physical verification
+## Validation evidence (2026-07-17)
+
+- PlatformIO 6.1.19 built `maria-m5stack-core2` and
+  `maria-m5stack-core2-diag` successfully.
+- The native firmware suite passed 15 of 15 tests, including radar geometry,
+  source badges, and touch control coverage.
+- Normal Core2 firmware uploaded successfully to
+  `/dev/cu.usbserial-537A0079331` (`ESP32-D0WDQ6-V3`, revision `v3.0`), with
+  the bootloader, partition, and application hashes verified by esptool.
+- A non-interactive serial read received `[wifi] not connected (status=1),
+  retrying...`. The interactive PlatformIO monitor cannot allocate a terminal
+  in the validation environment (`termios: Operation not supported by device`),
+  so it did not provide a complete boot capture.
+- The local backend smoke test served eight deterministic-simulation aircraft
+  with `OPENSKY_ENABLED=false`. This is backend evidence only, not visual
+  confirmation of the Core2 screen.
+
+## Physical verification still required
 
 1. Build `maria-m5stack-core2`.
 2. Upload to the validated Core2 serial port.
@@ -48,4 +66,5 @@ keeps the radar visible.
 5. Tap range, labels, previous/next, and pause controls.
 6. Confirm selected aircraft values remain readable.
 
-No screenshot or physical confirmation is included in this repository.
+No screenshot or physical confirmation is included in this repository. Confirm
+the screen and touch behavior on the device before declaring hardware success.
