@@ -19,9 +19,9 @@ void test_cardinal_projection() {
 
 void test_terminal_screen_geometry() {
   RadarScreenGeometry core2 = radarGeometry(320, 240);
-  TEST_ASSERT_EQUAL_INT16(126, core2.centerX);
-  TEST_ASSERT_EQUAL_INT16(116, core2.centerY);
-  TEST_ASSERT_TRUE(core2.radius >= 80);
+  TEST_ASSERT_EQUAL_INT16(160, core2.centerX);
+  TEST_ASSERT_EQUAL_INT16(122, core2.centerY);
+  TEST_ASSERT_TRUE(core2.radius >= 76);
 
   RadarScreenGeometry compact = radarGeometry(240, 180);
   TEST_ASSERT_TRUE(compact.radius >= 48);
@@ -41,6 +41,12 @@ void test_terminal_touch_mapping_boundaries() {
   TEST_ASSERT_EQUAL_UINT8(
       static_cast<uint8_t>(TerminalTouchAction::Settings),
       static_cast<uint8_t>(terminalTouchActionAt(300, 10, 320, 240)));
+  TEST_ASSERT_EQUAL_UINT8(
+      static_cast<uint8_t>(TerminalTouchAction::ToggleLabels),
+      static_cast<uint8_t>(terminalTouchActionAt(20, 120, 320, 240)));
+  TEST_ASSERT_EQUAL_UINT8(
+      static_cast<uint8_t>(TerminalTouchAction::Next),
+      static_cast<uint8_t>(terminalTouchActionAt(285, 100, 320, 240)));
   TEST_ASSERT_EQUAL_UINT8(
       static_cast<uint8_t>(TerminalTouchAction::None),
       static_cast<uint8_t>(terminalTouchActionAt(320, 10, 320, 240)));
@@ -212,6 +218,23 @@ void test_demo_aircraft_motion_is_bounded() {
   TEST_ASSERT_FALSE(clipped.visible);
 }
 
+void test_source_badges() {
+  Aircraft aircraft{};
+  strlcpy(aircraft.source, "simulation", sizeof(aircraft.source));
+  TEST_ASSERT_EQUAL_UINT8(
+      static_cast<uint8_t>(RadarSourceBadge::Demo),
+      static_cast<uint8_t>(radarSourceBadge(&aircraft, 1, false, false)));
+  strlcpy(aircraft.source, "local_adsb", sizeof(aircraft.source));
+  TEST_ASSERT_EQUAL_UINT8(
+      static_cast<uint8_t>(RadarSourceBadge::Live),
+      static_cast<uint8_t>(radarSourceBadge(&aircraft, 1, false, false)));
+  TEST_ASSERT_EQUAL_UINT8(
+      static_cast<uint8_t>(RadarSourceBadge::Cache),
+      static_cast<uint8_t>(radarSourceBadge(&aircraft, 1, true, false)));
+  TEST_ASSERT_EQUAL_STRING("OFFLINE",
+                           radarSourceBadgeLabel(RadarSourceBadge::Offline));
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_cardinal_projection);
@@ -228,5 +251,6 @@ int main() {
   RUN_TEST(test_backend_failure_and_timeout_states);
   RUN_TEST(test_radar_demo_controls_are_deterministic);
   RUN_TEST(test_demo_aircraft_motion_is_bounded);
+  RUN_TEST(test_source_badges);
   return UNITY_END();
 }
