@@ -35,20 +35,22 @@ For the zero-subscription MVP startup sequence, validation status, and Core2
 release-candidate notes, see
 [docs/MARIA_MVP_RELEASE_CANDIDATE.md](docs/MARIA_MVP_RELEASE_CANDIDATE.md).
 
-## Local development
-
-Backend:
+## Start MARIA locally
 
 ```bash
-cd backend
-PORT=8081 API_KEY=change-me MARIA_SOURCE_MODE=auto npm start
+npm install
+npm run dev:all
 ```
 
-Frontend:
+Verify both services and the radar feed in another terminal:
 
 ```bash
-VITE_API_BASE_URL=http://127.0.0.1:8081 npm run dev -- --host 127.0.0.1
+npm run dev:check
 ```
+
+The web app is available at http://127.0.0.1:5175/ and
+http://127.0.0.1:5175/radar. The backend health endpoint is
+http://127.0.0.1:8081/health.
 
 Firmware:
 

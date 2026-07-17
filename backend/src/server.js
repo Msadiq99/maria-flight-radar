@@ -3,6 +3,7 @@ import express from 'express';
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { networkInterfaces } from 'node:os';
 import {
   createRadarService,
   toDevicePayload,
@@ -10,7 +11,8 @@ import {
 } from './radar.js';
 import { createStore } from './store.js';
 
-const PORT = process.env.PORT || 8080;
+const PORT = Number(process.env.PORT || 8081);
+const HOST = process.env.HOST || '0.0.0.0';
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const API_KEY = process.env.API_KEY || (IS_PRODUCTION ? '' : 'change-me');
 const MAX_HISTORY_PER_DEVICE = 500;
@@ -705,6 +707,10 @@ app.get('/health', (_req, res) => {
   try {
     const database = store.ping();
     res.status(database ? 200 : 503).json({
+      status: database ? 'ok' : 'error',
+      service: 'maria-backend',
+      source: 'local_adsb',
+      openskyEnabled: OPENSKY_ENABLED,
       ok: database,
       database,
       traffic_source: TRAFFIC_SOURCE,
@@ -756,8 +762,21 @@ if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
-  app.listen(PORT, () => {
-    console.log(`[server] listening on port ${PORT}`);
+  app.listen(PORT, HOST, () => {
+    const interfaces = networkInterfaces();
+    const lanAddress = Object.values(interfaces)
+      .flat()
+      .find(
+        (entry) => entry && entry.family === 'IPv4' && !entry.internal
+      )?.address;
+    console.log(`[MARIA][BACKEND] listening=http://127.0.0.1:${PORT}`);
+    console.log(
+      `[MARIA][BACKEND] network=http://${lanAddress || 'unavailable'}:${PORT}`
+    );
+    console.log('[MARIA][BACKEND] source=local_adsb');
+    console.log(
+      `[MARIA][BACKEND] opensky=${OPENSKY_ENABLED ? 'enabled' : 'disabled'}`
+    );
   });
 }
 

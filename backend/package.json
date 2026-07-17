@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
+    "dev": "node src/server.js",
     "test": "DB_PATH=:memory: node --test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

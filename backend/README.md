@@ -8,12 +8,12 @@ Minimal Express server implementing the telemetry ingestion contract that
 ```
 cd backend
 npm install
-API_KEY=replace-with-a-random-secret PORT=8080 npm start
+API_KEY=replace-with-a-random-secret PORT=8081 npm start
 ```
 
 Environment variables:
 
-- `PORT` — default `8080`
+- `PORT` — default `8081`
 - `API_KEY` — must match `API_KEY` in the firmware's `config.h`. Development
   defaults to `change-me`; production refuses to start without an explicit key.
 - `NODE_ENV` — use `production` for deployed instances
