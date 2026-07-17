@@ -136,6 +136,11 @@ void RadarScreen::drawRadar(const RadarPreferences &preferences,
   snprintf(header, sizeof(header), "%u km  %u targets  %s",
            preferences.rangeKm, count, feedStateLabel(feedState));
   tft.drawString(header, 6, 21);
+  if (count > 0 && aircraft != nullptr && aircraft[0].source[0] != '\0') {
+    tft.drawString(strstr(aircraft[0].source, "sim") != nullptr ? "DEMO" :
+                       "LIVE",
+                   170, 4);
+  }
   tft.drawString("STAT", 214, 4);
   tft.drawString("SET", 268, 4);
 

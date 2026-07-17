@@ -34,6 +34,7 @@ class TrafficClient {
   void copyText(char *dest, size_t size, const char *value);
 
   const char *apiHost_ = nullptr;
+  char normalizedApiHost_[128] = "";
   const char *apiKey_ = nullptr;
   Aircraft aircraft_[kMaxAircraft]{};
   uint8_t count_ = 0;
@@ -41,6 +42,7 @@ class TrafficClient {
   uint32_t retryBackoffMs_ = 2000;
   uint32_t lastSuccessMs_ = 0;
   int lastHttpStatus_ = 0;
+  bool simulationActive_ = false;
 };
 
 }  // namespace MariaRadar

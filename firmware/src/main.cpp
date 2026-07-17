@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include <esp_system.h>
 #include <esp_task_wdt.h>
 
 #include "config.h"
@@ -11,6 +12,7 @@
     defined(MARIA_M5STACK_CORE2_RADAR_TERMINAL)
 #if defined(MARIA_M5STACK_CORE2_RADAR_TERMINAL)
 #include "board_profiles/m5stack_core2.h"
+#include <M5Unified.h>
 #else
 #include "board_profiles/esp32_2432s028r.h"
 #endif
@@ -30,6 +32,10 @@
 #define SIMULATE_GPS_WHEN_NO_FIX false
 #endif
 
+#ifndef FIRMWARE_VERSION
+#define FIRMWARE_VERSION "dev"
+#endif
+
 WifiManager wifiManager;
 GpsReader gpsReader;
 
@@ -46,6 +52,26 @@ MariaRadar::TerminalScreen terminalScreen = MariaRadar::TerminalScreen::Radar;
 uint32_t lastDisplayAtMs = 0;
 int selectedAircraft = -1;
 bool diagnosticsActive = false;
+
+void bootStatus(const char *stage, const char *state, const char *detail = nullptr) {
+  M5.Display.fillScreen(TFT_BLACK);
+  M5.Display.setTextColor(TFT_CYAN, TFT_BLACK);
+  M5.Display.setTextFont(2);
+  M5.Display.setCursor(8, 8);
+  M5.Display.println("MARIA FLIGHT RADAR");
+  M5.Display.setTextColor(TFT_WHITE, TFT_BLACK);
+  M5.Display.println("BOOTING...");
+  M5.Display.printf("%s  %s\n", stage, state);
+  if (detail != nullptr) M5.Display.println(detail);
+  Serial.printf("[MARIA][BOOT] %s=%s%s%s\n", stage, state,
+                detail == nullptr ? "" : " ", detail == nullptr ? "" : detail);
+  Serial.flush();
+}
+
+void bootLog(const char *stage, const char *message) {
+  Serial.printf("[MARIA][%s] %s\n", stage, message);
+  Serial.flush();
+}
 
 GpsFix simulatedFix() {
   const float step = (millis() / 1000) % 240;
@@ -139,10 +165,19 @@ void handleTouch(const MariaRadar::TouchEvent &event) {
 
 void setup() {
   Serial.begin(MariaBoard::kSerialBaud);
+  delay(50);
+  Serial.printf("[MARIA][BOOT] start reset=%d heap=%lu mode=normal build=%s\n",
+                static_cast<int>(esp_reset_reason()),
+                static_cast<unsigned long>(ESP.getFreeHeap()), FIRMWARE_VERSION);
+  Serial.flush();
+  bootLog("BOARD", "M5Stack Core2");
   MariaBoard::begin();
+  bootStatus("1. DISPLAY", "OK");
   esp_task_wdt_init(10, true);
   esp_task_wdt_add(nullptr);
+  bootStatus("2. SETTINGS", "WAIT");
   radarSettings.begin();
+  bootStatus("2. SETTINGS", "OK");
   diagnosticsActive = MariaRadar::diagnosticBootRequested();
   if (diagnosticsActive) {
     diagnosticApp.begin(&wifiManager);
@@ -152,11 +187,25 @@ void setup() {
     touchController.begin();
 #endif
   }
+  bootStatus("3. WIFI", "WAIT");
   gpsReader.begin(Serial2, GPS_RX_PIN, GPS_TX_PIN, GPS_BAUD);
   wifiManager.begin(WIFI_SSID, WIFI_PASSWORD);
+  if (wifiManager.provisioningActive()) {
+    bootStatus("3. WIFI", "SETUP", "http://maria-radar.local");
+    bootLog("WIFI", "setup mode");
+  } else {
+    bootStatus("3. WIFI", "OK", "connecting in background");
+    bootLog("WIFI", "connecting");
+  }
+  bootStatus("4. BACKEND", "WAIT", API_HOST);
   trafficClient.begin(API_HOST, API_KEY);
-  Serial.printf("[board] %s %s\n", MariaBoard::kBoardName,
-                MariaBoard::kValidationStatus);
+  bootStatus("4. BACKEND", "SKIP", "nonblocking; live polling continues");
+  bootStatus("5. RADAR", "OK", "DEMO fallback ready");
+  radarScreen.begin();
+  bootLog("RADAR", "targets=simulation fallback");
+  Serial.printf("[MARIA][READY] normal runtime heap=%lu\n",
+                static_cast<unsigned long>(ESP.getFreeHeap()));
+  Serial.flush();
 }
 
 void loop() {
@@ -187,6 +236,7 @@ void loop() {
 #endif
   preferences = radarSettings.get();
 
+  if (!fix.valid) fix = simulatedFix();
   trafficClient.poll(wifiManager.isConnected(), fix, preferences.rangeKm, now);
   selectedAircraft = MariaRadar::selectedAfterFiltering(
       trafficClient.aircraft(), trafficClient.count(), selectedAircraft,

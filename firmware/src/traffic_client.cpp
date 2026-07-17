@@ -18,7 +18,15 @@ constexpr size_t kJsonCapacity = 24576;
 }
 
 void TrafficClient::begin(const char *apiHost, const char *apiKey) {
-  apiHost_ = apiHost;
+  normalizedApiHost_[0] = '\0';
+  if (apiHost != nullptr) {
+    strlcpy(normalizedApiHost_, apiHost, sizeof(normalizedApiHost_));
+    while (strlen(normalizedApiHost_) > 0 &&
+           normalizedApiHost_[strlen(normalizedApiHost_) - 1] == '/') {
+      normalizedApiHost_[strlen(normalizedApiHost_) - 1] = '\0';
+    }
+  }
+  apiHost_ = normalizedApiHost_;
   apiKey_ = apiKey;
 }
 
@@ -29,21 +37,28 @@ void TrafficClient::poll(bool wifiConnected, const GpsFix &fix,
   }
 #if MARIA_FORCE_DEMO_MODE
   loadDemo(fix, nowMs);
+  simulationActive_ = true;
   lastSuccessMs_ = nowMs;
   lastHttpStatus_ = 200;
   nextAttemptMs_ = nowMs + 3000;
   return;
 #endif
   if (!wifiConnected) {
+    loadDemo(fix, nowMs);
+    simulationActive_ = true;
+    lastHttpStatus_ = 0;
     return;
   }
   if (nowMs < nextAttemptMs_) {
     return;
   }
   if (fetch(fix, rangeKm, nowMs)) {
+    simulationActive_ = false;
     retryBackoffMs_ = 2000;
     nextAttemptMs_ = nowMs + 3000;
   } else {
+    loadDemo(fix, nowMs);
+    simulationActive_ = true;
     nextAttemptMs_ = nowMs + retryBackoffMs_;
     retryBackoffMs_ = min(retryBackoffMs_ * 2, kMaxBackoffMs);
   }
@@ -59,6 +74,7 @@ uint8_t TrafficClient::count() const {
 
 FeedState TrafficClient::state(uint32_t nowMs, bool wifiConnected,
                                bool gpsValid) const {
+  if (simulationActive_) return FeedState::NoTraffic;
   if (!wifiConnected) return FeedState::WifiDisconnected;
   if (!gpsValid) return FeedState::GpsUnavailable;
   if (lastHttpStatus_ < 0 || lastHttpStatus_ >= 400) {
@@ -90,6 +106,7 @@ void TrafficClient::copyText(char *dest, size_t size, const char *value) {
 bool TrafficClient::fetch(const GpsFix &fix, uint16_t rangeKm, uint32_t nowMs) {
   if (apiHost_ == nullptr || strlen(apiHost_) == 0) {
     loadDemo(fix, nowMs);
+    simulationActive_ = true;
     lastSuccessMs_ = nowMs;
     lastHttpStatus_ = 200;
     return true;
