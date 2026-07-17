@@ -7,8 +7,13 @@
 #include "pins.h"
 #include "wifi_manager.h"
 
-#ifdef MARIA_ESP32_28_RADAR_TERMINAL
+#if defined(MARIA_ESP32_28_RADAR_TERMINAL) || \
+    defined(MARIA_M5STACK_CORE2_RADAR_TERMINAL)
+#if defined(MARIA_M5STACK_CORE2_RADAR_TERMINAL)
+#include "board_profiles/m5stack_core2.h"
+#else
 #include "board_profiles/esp32_2432s028r.h"
+#endif
 #include "radar_terminal/diagnostic_app.h"
 #include "radar_terminal/radar_screen.h"
 #include "radar_terminal/radar_settings.h"
@@ -28,7 +33,8 @@
 WifiManager wifiManager;
 GpsReader gpsReader;
 
-#ifdef MARIA_ESP32_28_RADAR_TERMINAL
+#if defined(MARIA_ESP32_28_RADAR_TERMINAL) || \
+    defined(MARIA_M5STACK_CORE2_RADAR_TERMINAL)
 
 MariaRadar::RadarSettings radarSettings;
 MariaRadar::RadarScreen radarScreen;
@@ -133,6 +139,7 @@ void handleTouch(const MariaRadar::TouchEvent &event) {
 
 void setup() {
   Serial.begin(MariaBoard::kSerialBaud);
+  MariaBoard::begin();
   esp_task_wdt_init(10, true);
   esp_task_wdt_add(nullptr);
   radarSettings.begin();

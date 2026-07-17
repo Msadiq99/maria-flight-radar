@@ -2,6 +2,8 @@
 
 #include <Arduino.h>
 
+#include "radar_terminal/boards/board_interface.h"
+
 // MARIA ESP32 2.8-inch radar terminal board profile.
 //
 // Confirmed from PCB photos:
@@ -26,21 +28,12 @@ constexpr const char *kValidationStatus =
 constexpr const char *kPinValidationStatus = "UNVERIFIED_UNTIL_POWERED_TEST";
 constexpr uint8_t kProfileRevision = 2;
 
-struct BoardIdentity {
-  const char *family;
-  const char *pcbMarking;
-  uint16_t width;
-  uint16_t height;
-  const char *touchType;
-  const char *validationStatus;
-  uint8_t profileRevision;
-};
-
 constexpr uint16_t kDisplayWidth = 320;
 constexpr uint16_t kDisplayHeight = 240;
 constexpr uint8_t kLandscapeRotation = 1;
 constexpr const char *kTftController = "ILI9341";
 constexpr const char *kTouchController = "XPT2046";
+constexpr TouchKind kTouchKind = TouchKind::ResistiveXpt2046;
 
 constexpr int kTftMiso = 12;
 constexpr int kTftMosi = 13;
@@ -70,8 +63,6 @@ constexpr int kSdCs = 5;
 
 constexpr int kSpeakerPin = -1;
 constexpr int kSpeakerActiveLevel = HIGH;
-
-constexpr uint32_t kSerialBaud = 115200;
 
 constexpr BoardIdentity kIdentity{kBoardName,
                                   kPcbMarking,

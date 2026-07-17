@@ -1,4 +1,5 @@
-#ifdef MARIA_ESP32_28_RADAR_TERMINAL
+#if defined(MARIA_ESP32_28_RADAR_TERMINAL) || \
+    defined(MARIA_M5STACK_CORE2_RADAR_TERMINAL)
 
 #include "radar_terminal/radar_settings.h"
 
