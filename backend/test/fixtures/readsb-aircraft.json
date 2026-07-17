@@ -1,0 +1,53 @@
+{
+  "now": 1783555200,
+  "messages": 2048,
+  "aircraft": [
+    {
+      "hex": "4CA123",
+      "flight": " SVA123 ",
+      "lat": 24.8,
+      "lon": 46.7,
+      "alt_baro": 34000,
+      "gs": 450,
+      "track": 487,
+      "baro_rate": 0,
+      "squawk": "1234",
+      "category": "A3",
+      "emergency": "none",
+      "seen": 0.6,
+      "seen_pos": 0.8,
+      "rssi": -19.4,
+      "messages": 2048
+    },
+    {
+      "hex": "4CA124",
+      "lat": 24.81,
+      "lon": 46.71,
+      "alt_geom": 12000,
+      "speed": 220,
+      "heading": 0,
+      "vert_rate": -300,
+      "squawk": "7700",
+      "emergency": "general",
+      "seen_pos": 1.2
+    },
+    {
+      "hex": "4CA125",
+      "flight": "STALE",
+      "lat": 24.82,
+      "lon": 46.72,
+      "seen_pos": 99
+    },
+    {
+      "hex": "4CA126",
+      "flight": "INVALID",
+      "lat": 190,
+      "lon": 46.73
+    },
+    {
+      "hex": "4CA127",
+      "flight": "NOPOS",
+      "seen": 0.2
+    }
+  ]
+}

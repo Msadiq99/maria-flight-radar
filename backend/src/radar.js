@@ -24,6 +24,11 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
+function normalizeHeading(value) {
+  const heading = numberOrNull(value);
+  return heading === null ? null : ((heading % 360) + 360) % 360;
+}
+
 export function distanceKm(fromLat, fromLon, toLat, toLon) {
   const dLat = ((toLat - fromLat) * Math.PI) / 180;
   const dLon = ((toLon - fromLon) * Math.PI) / 180;
@@ -324,11 +329,14 @@ export class LocalAdsbClient {
   constructor(config = {}) {
     this.enabled = config.enabled ?? false;
     this.simulator = config.simulator ?? false;
-    this.baseUrl = config.baseUrl || 'http://localhost:8080';
+    this.baseUrl = config.baseUrl || 'http://127.0.0.1:8080';
     this.aircraftPath = config.aircraftPath || '/data/aircraft.json';
-    this.timeoutMs = config.timeoutMs || 3000;
-    this.maxAgeSeconds = config.maxAgeSeconds || 30;
-    this.cacheMaxAgeSeconds = config.cacheMaxAgeSeconds || 60;
+    this.timeoutMs = config.timeoutMs || 2000;
+    this.maxAgeSeconds = config.maxAgeSeconds || 10;
+    this.cacheMaxAgeSeconds = config.cacheMaxAgeSeconds || 10;
+    this.maxRangeNm = config.maxRangeNm || 250;
+    this.receiverLatitude = numberOrNull(config.receiverLatitude);
+    this.receiverLongitude = numberOrNull(config.receiverLongitude);
     this.fixture = config.fixture;
     this.fetchImpl = config.fetchImpl || fetch;
     this.lastGood = null;
@@ -350,12 +358,26 @@ export class LocalAdsbClient {
           ? simulatedLocalAdsbAircraftJson(query)
           : await this.fetchJson());
       const now = new Date();
-      const tracks = (Array.isArray(data.aircraft) ? data.aircraft : [])
+      if (!data || !Array.isArray(data.aircraft)) {
+        throw Object.assign(new Error('local ADS-B payload malformed'), {
+          code: 'malformed_json',
+        });
+      }
+      const tracks = data.aircraft
         .map((item) => normalizeLocalAdsbTrack(item, now, query.center))
         .filter(Boolean)
         .filter(
           (track) => (track.quality?.ageSeconds ?? 0) <= this.maxAgeSeconds
-        );
+        )
+        .filter((track) => {
+          if (
+            this.receiverLatitude === null ||
+            this.receiverLongitude === null
+          ) {
+            return true;
+          }
+          return (track.distanceNm ?? Infinity) <= this.maxRangeNm;
+        });
       this.lastGood = { tracks, time: Date.now() };
       return {
         tracks,
@@ -445,16 +467,33 @@ export function simulatedLocalAdsbAircraftJson(query, count = 8) {
 export function normalizeLocalAdsbTrack(item, receivedAtDate, center) {
   const latitude = numberOrNull(item.lat);
   const longitude = numberOrNull(item.lon);
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  if (
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude) ||
+    latitude < -90 ||
+    latitude > 90 ||
+    longitude < -180 ||
+    longitude > 180
+  ) {
+    return null;
+  }
   const ageSeconds = Math.max(0, numberOrNull(item.seen_pos ?? item.seen) ?? 0);
   const sourceDate = new Date(receivedAtDate.getTime() - ageSeconds * 1000);
   const altitudeFeet =
-    item.alt_baro === 'ground' ? 0 : numberOrNull(item.alt_baro);
+    item.alt_baro === 'ground'
+      ? 0
+      : numberOrNull(item.alt_baro ?? item.altitude ?? item.alt_geom);
+  const speedKnots = numberOrNull(item.gs ?? item.speed);
+  const trackDegrees = normalizeHeading(
+    item.track ?? item.heading ?? item.nav_heading
+  );
+  const verticalRateFpm = numberOrNull(item.baro_rate ?? item.vert_rate);
+  const signalDbfs = numberOrNull(item.rssi);
   return enrichTrack(
     {
       id: String(item.hex || `adsb-${latitude}-${longitude}`).toLowerCase(),
       icao24: String(item.hex || '').toLowerCase(),
-      callsign: String(item.flight || '').trim() || null,
+      callsign: String(item.flight || item.callsign || '').trim() || null,
       registration: null,
       aircraftType: item.t ? String(item.t) : null,
       latitude,
@@ -468,18 +507,19 @@ export function normalizeLocalAdsbTrack(item, receivedAtDate, center) {
           ? null
           : Number((numberOrNull(item.alt_geom) * METERS_PER_FOOT).toFixed(1)),
       groundSpeedMps:
-        numberOrNull(item.gs) === null
+        speedKnots === null
           ? null
-          : Number((numberOrNull(item.gs) * MPS_PER_KNOT).toFixed(2)),
+          : Number((speedKnots * MPS_PER_KNOT).toFixed(2)),
       verticalRateMps:
-        numberOrNull(item.baro_rate) === null
+        verticalRateFpm === null
           ? null
-          : Number(
-              ((numberOrNull(item.baro_rate) * METERS_PER_FOOT) / 60).toFixed(2)
-            ),
-      headingDegrees: numberOrNull(item.track),
+          : Number(((verticalRateFpm * METERS_PER_FOOT) / 60).toFixed(2)),
+      headingDegrees: trackDegrees,
       squawk: item.squawk ? String(item.squawk) : null,
       category: item.category ? String(item.category) : null,
+      emergency: item.emergency ? String(item.emergency) : null,
+      signalDbfs,
+      messages: numberOrNull(item.messages),
       onGround: item.alt_baro === 'ground',
       lastContactAt: sourceDate.toISOString(),
       sourceTimestamp: sourceDate.toISOString(),
@@ -490,7 +530,7 @@ export function normalizeLocalAdsbTrack(item, receivedAtDate, center) {
       quality: {
         positionValid: true,
         altitudeValid: altitudeFeet !== null,
-        velocityValid: numberOrNull(item.gs) !== null,
+        velocityValid: speedKnots !== null,
         ageSeconds,
       },
     },
@@ -508,6 +548,7 @@ function enrichTrack(track, center) {
   return {
     ...track,
     distanceKm: Number(dist.toFixed(3)),
+    distanceNm: Number((dist / 1.852).toFixed(3)),
     bearingDegrees: Number(
       bearingDegrees(
         center.latitude,
@@ -750,6 +791,8 @@ export function toLegacyTraffic(snapshot) {
 }
 
 export function toDevicePayload(snapshot, maxAircraft = 32) {
+  const configuredMax = Number(process.env.CORE2_MAX_TARGETS) || 12;
+  const limit = Math.min(maxAircraft, configuredMax);
   return {
     version: '1',
     generatedAt: snapshot.generatedAt,
@@ -764,17 +807,30 @@ export function toDevicePayload(snapshot, maxAircraft = 32) {
       status: source.status,
     })),
     stale: snapshot.stale,
-    aircraft: snapshot.aircraft.slice(0, maxAircraft).map((track) => ({
-      id: track.icao24 || track.id,
-      callsign: track.callsign || track.icao24 || track.id,
-      bearingDeg: track.bearingDegrees,
-      distanceKm: track.distanceKm,
-      altitudeM: track.altitudeMeters,
-      speedMps: track.groundSpeedMps,
-      headingDeg: track.headingDegrees,
-      source: track.source,
-      ageSec: Math.round(track.quality?.ageSeconds ?? 0),
-    })),
+    aircraft: snapshot.aircraft
+      .slice()
+      .sort(
+        (a, b) =>
+          Number(Boolean(b.emergency)) - Number(Boolean(a.emergency)) ||
+          (a.distanceKm ?? 9999) - (b.distanceKm ?? 9999) ||
+          (a.quality?.ageSeconds ?? 9999) - (b.quality?.ageSeconds ?? 9999) ||
+          (b.signalDbfs ?? -9999) - (a.signalDbfs ?? -9999)
+      )
+      .slice(0, limit)
+      .map((track) => ({
+        id: track.icao24 || track.id,
+        callsign: track.callsign || track.icao24 || track.id,
+        bearingDeg: track.bearingDegrees,
+        distanceKm: track.distanceKm,
+        altitudeM: track.altitudeMeters,
+        speedMps: track.groundSpeedMps,
+        headingDeg: track.headingDegrees,
+        source: track.source,
+        ageSec: Math.round(track.quality?.ageSeconds ?? 0),
+        status: track.stale ? 'stale' : 'live',
+        emergency: track.emergency || null,
+        squawk: track.squawk || null,
+      })),
   };
 }
 
@@ -800,11 +856,14 @@ export function createRadarService(env = process.env, fetchImpl = fetch) {
     localAdsbClient: new LocalAdsbClient({
       enabled: env.LOCAL_ADSB_ENABLED === 'true',
       simulator: env.LOCAL_ADSB_SIMULATOR === 'true',
-      baseUrl: env.LOCAL_ADSB_BASE_URL || 'http://localhost:8080',
+      baseUrl: env.LOCAL_ADSB_BASE_URL || 'http://127.0.0.1:8080',
       aircraftPath: env.LOCAL_ADSB_AIRCRAFT_PATH || '/data/aircraft.json',
-      timeoutMs: Number(env.LOCAL_ADSB_TIMEOUT_MS) || 3000,
-      maxAgeSeconds: Number(env.LOCAL_ADSB_MAX_AGE_SECONDS) || 30,
-      cacheMaxAgeSeconds: Number(env.LOCAL_ADSB_CACHE_MAX_AGE_SECONDS) || 60,
+      timeoutMs: Number(env.LOCAL_ADSB_TIMEOUT_MS) || 2000,
+      maxAgeSeconds: Number(env.LOCAL_ADSB_STALE_AFTER_MS || 10000) / 1000,
+      cacheMaxAgeSeconds: Number(env.LOCAL_ADSB_STALE_AFTER_MS || 10000) / 1000,
+      maxRangeNm: Number(env.LOCAL_ADSB_MAX_RANGE_NM) || 250,
+      receiverLatitude: env.LOCAL_ADSB_RECEIVER_LAT,
+      receiverLongitude: env.LOCAL_ADSB_RECEIVER_LON,
       fetchImpl,
     }),
   });

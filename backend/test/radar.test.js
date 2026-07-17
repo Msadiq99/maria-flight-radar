@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import { test } from 'node:test';
 
 import {
@@ -192,4 +194,28 @@ test('local ADS-B client uses a recent cached snapshot during interruption', asy
   assert.equal(first.health.status, 'healthy');
   assert.equal(second.health.status, 'degraded');
   assert.equal(second.tracks.length, 2);
+});
+
+test('normalizes sanitized readsb fields and rejects invalid or stale positions', async () => {
+  const fixture = JSON.parse(
+    fs.readFileSync(
+      path.join(import.meta.dirname, 'fixtures/readsb-aircraft.json'),
+      'utf8'
+    )
+  );
+  const client = new LocalAdsbClient({
+    enabled: true,
+    fixture,
+    maxAgeSeconds: 10,
+  });
+  const result = await client.fetchTracks({ center, rangeKm: 100 });
+  assert.equal(result.health.status, 'healthy');
+  assert.equal(result.tracks.length, 2);
+  assert.equal(result.tracks[0].icao24, '4ca123');
+  assert.equal(result.tracks[0].callsign, 'SVA123');
+  assert.equal(result.tracks[0].headingDegrees, 127);
+  assert.equal(result.tracks[0].emergency, 'none');
+  assert.equal(result.tracks[1].squawk, '7700');
+  assert.equal(result.tracks[1].altitudeMeters, 3657.6);
+  assert.ok(result.tracks.every((track) => track.distanceNm !== null));
 });
