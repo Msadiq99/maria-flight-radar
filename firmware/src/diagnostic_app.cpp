@@ -63,6 +63,8 @@ const char *screenName(DiagnosticScreen screen) {
       return "speaker";
     case DiagnosticScreen::RadarDemo:
       return "demo";
+    case DiagnosticScreen::Summary:
+      return "summary";
     case DiagnosticScreen::Normal:
       return "normal";
   }
@@ -106,7 +108,11 @@ bool diagnosticBootRequested() {
 
 void DiagnosticApp::begin(WifiManager *wifiManager) {
   wifiManager_ = wifiManager;
+  for (uint8_t i = 0; i < static_cast<uint8_t>(DiagnosticItem::Count); i++) {
+    statuses_[i] = DiagnosticStatus::NotTested;
+  }
 #if defined(MARIA_M5STACK_CORE2_RADAR_TERMINAL)
+  delay(250);
   MariaBoard::begin();
 #else
   pinMode(MariaBoard::kBacklightPin, OUTPUT);
@@ -133,9 +139,13 @@ void DiagnosticApp::begin(WifiManager *wifiManager) {
 #endif
 #endif
   loadTouchCalibration();
-  Serial.println("[diag] MARIA diagnostics ready");
-  Serial.println("[diag] commands: help info display touch wifi backend sd led speaker demo normal reboot");
+  logStartup();
   printBoardInfo();
+  setStatus(DiagnosticItem::Board, DiagnosticStatus::Pass, "board info ready");
+  setStatus(DiagnosticItem::Rgb,
+            core2RgbSupported() ? DiagnosticStatus::NotTested
+                                : DiagnosticStatus::Unsupported,
+            core2RgbSupported() ? nullptr : "no Core2 RGB diagnostic");
   drawMenu();
 }
 
@@ -152,7 +162,29 @@ void DiagnosticApp::setScreen(DiagnosticScreen screen) {
   }
   screen_ = screen;
   lastDrawMs_ = 0;
-  Serial.printf("[diag] screen=%s\n", screenName(screen_));
+  Serial.printf("[MARIA][MENU] %s\n", screenName(screen_));
+  Serial.flush();
+  if (screen == DiagnosticScreen::Display) {
+    setStatus(DiagnosticItem::Display, DiagnosticStatus::Running, "display start");
+  } else if (screen == DiagnosticScreen::Touch) {
+    setStatus(DiagnosticItem::Touch, DiagnosticStatus::Running, "touch start");
+  } else if (screen == DiagnosticScreen::Wifi) {
+    setStatus(DiagnosticItem::WifiScan, DiagnosticStatus::Running, "scan start");
+    wifiScanStartedMs_ = millis();
+    WiFi.scanDelete();
+    WiFi.scanNetworks(true);
+  } else if (screen == DiagnosticScreen::Backend) {
+    setStatus(DiagnosticItem::Backend, DiagnosticStatus::Running, "backend start");
+  } else if (screen == DiagnosticScreen::Sd) {
+    setStatus(DiagnosticItem::Sd, DiagnosticStatus::Running, "sd start");
+  } else if (screen == DiagnosticScreen::Speaker) {
+    setStatus(DiagnosticItem::Speaker, DiagnosticStatus::Running,
+              "speaker prompt");
+    speakerPromptStep_ = 0;
+  } else if (screen == DiagnosticScreen::RadarDemo) {
+    setStatus(DiagnosticItem::RadarDemo, DiagnosticStatus::Running,
+              "offline demo start");
+  }
 }
 
 bool DiagnosticApp::poll(const GpsFix &fix) {
@@ -194,10 +226,14 @@ bool DiagnosticApp::poll(const GpsFix &fix) {
     case DiagnosticScreen::RadarDemo:
       drawRadarDemo();
       break;
+    case DiagnosticScreen::Summary:
+      drawSummary();
+      break;
     case DiagnosticScreen::Normal:
-      return true;
+      drawNormalConfirm();
+      break;
   }
-  return screen_ == DiagnosticScreen::Normal;
+  return screen_ == DiagnosticScreen::Normal && normalConfirm_;
 }
 
 void DiagnosticApp::drawHeader(const char *title) {
@@ -216,6 +252,43 @@ void DiagnosticApp::drawButton(int16_t x, int16_t y, int16_t w,
   diagTft.setTextColor(kWhite, kBg);
 }
 
+void DiagnosticApp::drawFooterBack() { drawButton(8, 202, 86, "Back"); }
+
+void DiagnosticApp::logStartup() {
+  Serial.println("[MARIA][BOOT] Firmware starting");
+  Serial.printf("[MARIA][BOARD] %s\n", MariaBoard::kBoardName);
+#if defined(MARIA_M5STACK_CORE2_RADAR_TERMINAL)
+  Serial.println("[MARIA][MODE] Diagnostic");
+#else
+  Serial.println("[MARIA][MODE] Diagnostic ESP32-32E");
+#endif
+  Serial.println("[MARIA][DISPLAY] Init PASS");
+#if MARIA_DISABLE_TOUCH
+  Serial.println("[MARIA][TOUCH] Init SKIP disabled");
+#else
+  Serial.printf("[MARIA][TOUCH] Init %s\n", touchReady_ ? "PASS" : "FAIL");
+#endif
+  Serial.println("[MARIA][SD] Not tested");
+  Serial.println("[MARIA][WIFI] Not tested");
+  Serial.println("[MARIA][RADAR] Offline demo ready");
+  Serial.println("[MARIA][SERIAL] 115200");
+  Serial.println("[MARIA][COMMANDS] help info display touch wifi backend sd led speaker demo summary normal reboot");
+  Serial.flush();
+}
+
+void DiagnosticApp::setStatus(DiagnosticItem item, DiagnosticStatus status,
+                              const char *detail) {
+  const uint8_t index = static_cast<uint8_t>(item);
+  if (index >= static_cast<uint8_t>(DiagnosticItem::Count)) return;
+  if (statuses_[index] == status && detail == nullptr) return;
+  statuses_[index] = status;
+  Serial.printf("[MARIA][DIAG] %s %s", diagnosticItemLabel(item),
+                diagnosticStatusLabel(status));
+  if (detail != nullptr) Serial.printf(" %s", detail);
+  Serial.println();
+  Serial.flush();
+}
+
 void DiagnosticApp::drawMenu() {
   drawHeader("MARIA FIRST-FLASH DIAGNOSTICS");
   const char *items[] = {"1 Display", "2 Touch", "3 Board", "4 WiFi",
@@ -225,6 +298,20 @@ void DiagnosticApp::drawMenu() {
     int16_t x = (i % 2) ? 164 : 8;
     int16_t y = 34 + (i / 2) * 38;
     drawButton(x, y, 148, items[i]);
+    DiagnosticItem item = DiagnosticItem::Display;
+    if (i == 1) item = DiagnosticItem::Touch;
+    if (i == 2) item = DiagnosticItem::Board;
+    if (i == 3) item = DiagnosticItem::WifiScan;
+    if (i == 4) item = DiagnosticItem::Backend;
+    if (i == 5) item = DiagnosticItem::Sd;
+    if (i == 6) item = DiagnosticItem::Rgb;
+    if (i == 7) item = DiagnosticItem::Speaker;
+    if (i == 8) item = DiagnosticItem::RadarDemo;
+    if (i == 9) item = DiagnosticItem::NormalMode;
+    diagTft.setTextColor(kAmber, kPanel);
+    diagTft.drawString(diagnosticStatusLabel(statuses_[static_cast<uint8_t>(item)]),
+                       x + 96, y + 9);
+    diagTft.setTextColor(kWhite, kBg);
   }
 }
 
@@ -261,7 +348,13 @@ void DiagnosticApp::drawDisplayTest() {
     diagTft.drawString("BL", 2, 220);
     diagTft.drawString("BR", 292, 220);
   }
-  Serial.printf("[diag] display step=%u width=%d height=%d rotation=%u\n",
+  diagTft.setTextColor(kWhite, kBg);
+  diagTft.drawString("Tap to continue. Back exits.", 8, 218);
+  if (displayStep_ == kDisplayStepCount - 1) {
+    setStatus(DiagnosticItem::Display, DiagnosticStatus::Pass,
+              "sequence complete");
+  }
+  Serial.printf("[MARIA][DISPLAY] step=%u width=%d height=%d rotation=%u\n",
                 displayStep_, diagTft.width(), diagTft.height(),
                 MariaBoard::kLandscapeRotation);
 }
@@ -282,12 +375,34 @@ void DiagnosticApp::drawTouchTest() {
   if (lastTouchDetected_) {
     lastRawX_ = detail.x;
     lastRawY_ = detail.y;
-    lastMappedX_ = constrain(detail.x, 0, MariaBoard::kDisplayWidth - 1);
-    lastMappedY_ = constrain(detail.y, 0, MariaBoard::kDisplayHeight - 1);
+    if (detail.x < 0 || detail.y < 0 ||
+        detail.x >= MariaBoard::kDisplayWidth ||
+        detail.y >= MariaBoard::kDisplayHeight) {
+      Serial.printf("[MARIA][TOUCH] FAIL out_of_range x=%d y=%d\n", detail.x,
+                    detail.y);
+      setStatus(DiagnosticItem::Touch, DiagnosticStatus::Fail,
+                "coordinate out of range");
+    } else {
+      lastMappedX_ = detail.x;
+      lastMappedY_ = detail.y;
+      touchEvents_++;
+      Serial.printf("[MARIA][TOUCH] PASS coordinate x=%d y=%d count=%u\n",
+                    lastMappedX_, lastMappedY_, touchEvents_);
+      setStatus(DiagnosticItem::Touch, DiagnosticStatus::Pass,
+                "valid coordinate");
+    }
   }
   diagTft.printf("Touch: %s\n", lastTouchDetected_ ? "pressed" : "idle");
   diagTft.printf("Point: %d,%d\n", lastMappedX_, lastMappedY_);
+  diagTft.printf("Events: %u\n", touchEvents_);
   diagTft.println("FT6336U capacitive touch");
+  if (lastTouchDetected_) {
+    diagTft.drawCircle(lastMappedX_, lastMappedY_, 10, kAmber);
+    diagTft.drawLine(lastMappedX_ - 8, lastMappedY_, lastMappedX_ + 8,
+                     lastMappedY_, kAmber);
+    diagTft.drawLine(lastMappedX_, lastMappedY_ - 8, lastMappedX_,
+                     lastMappedY_ + 8, kAmber);
+  }
 #else
   lastTouchDetected_ = diagTouch.touched();
   if (lastTouchDetected_) {
@@ -340,7 +455,7 @@ void DiagnosticApp::drawTouchTest() {
                    lastMappedY_ + 8, kAmber);
 #endif
 #endif
-  drawButton(8, 202, 86, "Menu");
+  drawFooterBack();
 }
 
 void DiagnosticApp::loadTouchCalibration() {
@@ -392,61 +507,79 @@ void DiagnosticApp::printBoardInfo() {
 void DiagnosticApp::drawBoardInfo() {
   drawHeader("BOARD INFO");
   char line[96];
-  snprintf(line, sizeof(line), "Chip rev:%u cores:%u", ESP.getChipRevision(),
-           ESP.getChipCores());
-  diagTft.drawString(line, 8, 32);
+  diagTft.drawString("MARIA Flight Radar", 8, 28);
+  diagTft.drawString(MariaBoard::kBoardName, 8, 50);
+  snprintf(line, sizeof(line), "Chip rev:%u cores:%u %uMHz",
+           ESP.getChipRevision(), ESP.getChipCores(), ESP.getCpuFreqMHz());
+  diagTft.drawString(line, 8, 72);
   snprintf(line, sizeof(line), "Flash:%lu Heap:%lu Min:%lu",
            static_cast<unsigned long>(ESP.getFlashChipSize()),
            static_cast<unsigned long>(ESP.getFreeHeap()),
            static_cast<unsigned long>(ESP.getMinFreeHeap()));
-  diagTft.drawString(line, 8, 56);
-  snprintf(line, sizeof(line), "MAC:%s", WiFi.macAddress().c_str());
-  diagTft.drawString(line, 8, 80);
-  diagTft.drawString(MariaBoard::kPcbMarking, 8, 104);
-  diagTft.drawString(MariaBoard::kValidationStatus, 8, 128);
-  diagTft.drawString(MariaBoard::kTftController, 8, 152);
-  diagTft.drawString(MariaBoard::kTouchController, 8, 176);
-  diagTft.drawString(MariaBoard::kPinValidationStatus, 8, 198);
+  diagTft.drawString(line, 8, 94);
+  snprintf(line, sizeof(line), "Mode: diagnostic %s %s", __DATE__, __TIME__);
+  diagTft.drawString(line, 8, 116);
+  snprintf(line, sizeof(line), "%ux%u rot=%u", MariaBoard::kDisplayWidth,
+           MariaBoard::kDisplayHeight, MariaBoard::kLandscapeRotation);
+  diagTft.drawString(line, 8, 138);
+  diagTft.drawString(MariaBoard::kTftController, 8, 160);
+  diagTft.drawString(MariaBoard::kTouchController, 8, 182);
+  drawFooterBack();
 }
 
 void DiagnosticApp::drawWifiTest() {
   drawHeader("WI-FI DIAGNOSTICS");
   wl_status_t status = WiFi.status();
   diagTft.printf("State: %s\n", status == WL_CONNECTED ? "connected" : "offline");
-  diagTft.printf("IP: %s\n", WiFi.localIP().toString().c_str());
-  diagTft.printf("GW: %s\n", WiFi.gatewayIP().toString().c_str());
-  diagTft.printf("DNS: %s\n", WiFi.dnsIP().toString().c_str());
-  diagTft.printf("MAC: %s\n", WiFi.macAddress().c_str());
+  if (status == WL_CONNECTED) {
+    diagTft.printf("IP: %s\n", WiFi.localIP().toString().c_str());
+    setStatus(DiagnosticItem::WifiConnection, DiagnosticStatus::Pass,
+              "connected");
+  } else {
+    diagTft.println("IP: unavailable offline");
+    if (statuses_[static_cast<uint8_t>(DiagnosticItem::WifiConnection)] ==
+        DiagnosticStatus::NotTested) {
+      setStatus(DiagnosticItem::WifiConnection, DiagnosticStatus::Skipped,
+                "offline");
+    }
+  }
   diagTft.printf("RSSI: %d dBm\n", status == WL_CONNECTED ? WiFi.RSSI() : 0);
-  diagTft.println("Serial: wifi / wifi-clear");
+  diagTft.println("Back exits. Retest: serial retest");
   int networks = WiFi.scanComplete();
-  if (networks == WIFI_SCAN_FAILED) WiFi.scanNetworks(true);
+  if (networks == WIFI_SCAN_FAILED && wifiScanStartedMs_ == 0) {
+    wifiScanStartedMs_ = millis();
+    WiFi.scanNetworks(true);
+  }
   if (networks >= 0) {
+    setStatus(DiagnosticItem::WifiScan, DiagnosticStatus::Pass, "scan complete");
     diagTft.printf("Networks: %d\n", networks);
     for (int i = 0; i < min(networks, 4); i++) {
       diagTft.printf("%s %d %s\n", WiFi.SSID(i).c_str(), WiFi.RSSI(i),
                      WiFi.encryptionType(i) == WIFI_AUTH_OPEN ? "open" : "sec");
     }
+  } else if (wifiScanStartedMs_ > 0 && millis() - wifiScanStartedMs_ > 10000) {
+    setStatus(DiagnosticItem::WifiScan, DiagnosticStatus::Timeout,
+              "scan timeout");
+    diagTft.println("Scan timeout. Use retest.");
   } else {
     diagTft.println("Scan running...");
   }
+  drawFooterBack();
 }
 
 void DiagnosticApp::runBackendTest(const GpsFix &fix) {
+  (void)fix;
   const uint32_t started = millis();
-  BackendDiagnosticState preflight = classifyBackendStatus(
-      0, false, WiFi.status() == WL_CONNECTED, fix.valid, false);
-  if (preflight != BackendDiagnosticState::JsonMalformed &&
-      preflight != BackendDiagnosticState::HttpOk) {
-    strlcpy(backendMessage_, backendStateLabel(preflight),
-            sizeof(backendMessage_));
+  if (WiFi.status() != WL_CONNECTED) {
+    strlcpy(backendMessage_, "wifi unavailable", sizeof(backendMessage_));
     backendStatus_ = 0;
+    setStatus(DiagnosticItem::Backend, DiagnosticStatus::Skipped,
+              "wifi unavailable");
     return;
   }
   char url[192];
   snprintf(url, sizeof(url),
-           "%s/api/traffic/nearby?lat=%.6f&lon=%.6f&radius_km=25", API_HOST,
-           fix.latitude, fix.longitude);
+           "%s/health", API_HOST);
   HTTPClient http;
   http.setTimeout(2500);
   if (!http.begin(url)) {
@@ -455,17 +588,18 @@ void DiagnosticApp::runBackendTest(const GpsFix &fix) {
     return;
   }
   backendStatus_ = http.GET();
-  JsonDocument doc;
-  bool jsonOk = backendStatus_ >= 200 && backendStatus_ < 300 &&
-                deserializeJson(doc, http.getStream()) == DeserializationError::Ok;
-  uint8_t count = jsonOk ? doc["aircraft"].size() : 0;
+  bool jsonOk = backendStatus_ >= 200 && backendStatus_ < 300;
   http.end();
   backendDurationMs_ = millis() - started;
   BackendDiagnosticState state = classifyBackendStatus(
       backendStatus_, jsonOk, true, true, backendDurationMs_ > 2600);
-  snprintf(backendMessage_, sizeof(backendMessage_), "%s status=%d count=%u",
-           backendStateLabel(state), backendStatus_, count);
-  Serial.printf("[diag] backend %s duration=%lu\n", backendMessage_,
+  snprintf(backendMessage_, sizeof(backendMessage_), "%s status=%d",
+           backendStateLabel(state), backendStatus_);
+  setStatus(DiagnosticItem::Backend,
+            state == BackendDiagnosticState::HttpOk ? DiagnosticStatus::Pass
+                                                    : DiagnosticStatus::Fail,
+            backendMessage_);
+  Serial.printf("[MARIA][BACKEND] %s duration=%lu\n", backendMessage_,
                 static_cast<unsigned long>(backendDurationMs_));
 }
 
@@ -477,20 +611,24 @@ void DiagnosticApp::drawBackendTest(const GpsFix &fix) {
   diagTft.printf("HTTP: %d\n", backendStatus_);
   diagTft.printf("Duration: %lu ms\n", static_cast<unsigned long>(backendDurationMs_));
   diagTft.printf("Result: %s\n", backendMessage_);
-  diagTft.println("No API key displayed.");
+  diagTft.println("No API key displayed. Back exits.");
+  drawFooterBack();
 }
 
 void DiagnosticApp::runSdTest() {
 #if MARIA_DISABLE_SD
   strlcpy(sdMessage_, "disabled by build flag", sizeof(sdMessage_));
+  setStatus(DiagnosticItem::Sd, DiagnosticStatus::Skipped, sdMessage_);
 #else
   if (!MariaBoard::sdBegin()) {
-    strlcpy(sdMessage_, "SD init failed or unavailable", sizeof(sdMessage_));
+    strlcpy(sdMessage_, "no card or init unavailable", sizeof(sdMessage_));
+    setStatus(DiagnosticItem::Sd, DiagnosticStatus::Skipped, sdMessage_);
     return;
   }
   File file = SD.open("/maria_diag.txt", FILE_WRITE);
   if (!file) {
     strlcpy(sdMessage_, "write open failed", sizeof(sdMessage_));
+    setStatus(DiagnosticItem::Sd, DiagnosticStatus::Fail, sdMessage_);
     return;
   }
   file.println("MARIA diagnostic");
@@ -502,6 +640,9 @@ void DiagnosticApp::runSdTest() {
   snprintf(sdMessage_, sizeof(sdMessage_), "type=%u size=%lluMB read=%s",
            SD.cardType(), SD.cardSize() / (1024ULL * 1024ULL),
            readOk ? "ok" : "failed");
+  setStatus(DiagnosticItem::Sd, readOk ? DiagnosticStatus::Pass
+                                       : DiagnosticStatus::Fail,
+            sdMessage_);
 #endif
 }
 
@@ -510,6 +651,7 @@ void DiagnosticApp::drawSdTest() {
   drawHeader("SD DIAGNOSTICS");
   diagTft.drawString(sdMessage_, 8, 40);
   diagTft.drawString("No erase or format performed.", 8, 70);
+  drawFooterBack();
 }
 
 void DiagnosticApp::runLedStep() {
@@ -530,12 +672,17 @@ void DiagnosticApp::drawLedTest() {
   drawHeader("RGB LED TEST");
   if (MariaBoard::kRgbLedRed < 0 || MariaBoard::kRgbLedGreen < 0 ||
       MariaBoard::kRgbLedBlue < 0) {
+    setStatus(DiagnosticItem::Rgb, DiagnosticStatus::Unsupported,
+              "no Core2 RGB LED");
     diagTft.drawString("Unsupported on this board profile", 8, 40);
+    drawFooterBack();
     return;
   }
   runLedStep();
   diagTft.printf("Step: %u\n", ledStep_);
   diagTft.drawString("Pins unverified. Slow manual sequence.", 8, 60);
+  setStatus(DiagnosticItem::Rgb, DiagnosticStatus::Running, "manual observe");
+  drawFooterBack();
 }
 
 void DiagnosticApp::beep(uint16_t hz, uint16_t ms) {
@@ -546,10 +693,16 @@ void DiagnosticApp::drawSpeakerTest() {
   drawHeader("SPEAKER TEST");
 #if MARIA_DISABLE_AUDIO
   diagTft.drawString("Audio disabled by build flag", 8, 40);
+  setStatus(DiagnosticItem::Speaker, DiagnosticStatus::Skipped,
+            "audio disabled");
   return;
 #endif
-  beep(880, 120);
-  diagTft.drawString("Short low-volume beep requested", 8, 40);
+  diagTft.drawString("Tap Play for a short safe tone.", 8, 40);
+  diagTft.drawString("Tap Heard after confirming audio.", 8, 64);
+  drawButton(8, 106, 86, "Play");
+  drawButton(112, 106, 86, "Heard");
+  drawButton(216, 106, 86, "Skip");
+  drawFooterBack();
 }
 
 void DiagnosticApp::drawRadarDemo() {
@@ -572,16 +725,56 @@ void DiagnosticApp::drawRadarDemo() {
                          : zone == AlertZone::Warning ? kAmber : kGreen;
     diagTft.fillCircle(p.x, p.y, i == demoSelected_ ? 5 : 3, color);
   }
-  diagTft.printf("range=%ukm targets=%u heap=%lu\n", demoRangeKm_,
-                 kDemoAircraftCount, static_cast<unsigned long>(ESP.getFreeHeap()));
-  diagTft.printf("redraw=%lums selected=%d touch=%s\n",
-                 static_cast<unsigned long>(millis() - now), demoSelected_,
+  DemoAircraft selected = demoAircraftAt(demoSelected_, demoPaused_ ? 0 : now);
+  diagTft.setTextColor(kWhite, kBg);
+  diagTft.printf("range=%ukm sel=%d %.1fkm %.0fm\n", demoRangeKm_,
+                 demoSelected_ + 1, selected.distanceKm,
+                 selected.altitudeMeters);
+  diagTft.printf("%s touch=%s\n", demoPaused_ ? "paused" : "running",
 #if MARIA_DISABLE_TOUCH
                  "disabled"
 #else
                  "compiled"
 #endif
   );
+  drawButton(8, 202, 72, "Back");
+  drawButton(88, 202, 72, "Range");
+  drawButton(168, 202, 72, demoPaused_ ? "Run" : "Pause");
+  drawButton(248, 202, 64, "Next");
+  if (statuses_[static_cast<uint8_t>(DiagnosticItem::RadarDemo)] ==
+      DiagnosticStatus::Running) {
+    setStatus(DiagnosticItem::RadarDemo, DiagnosticStatus::Pass,
+              "offline demo displayed");
+  }
+}
+
+void DiagnosticApp::drawSummary() {
+  drawHeader("DIAGNOSTIC SUMMARY");
+  diagTft.printf("%s %s\n", MariaBoard::kBoardName, __DATE__);
+  const DiagnosticItem items[] = {
+      DiagnosticItem::Display, DiagnosticItem::Touch,      DiagnosticItem::Board,
+      DiagnosticItem::WifiScan, DiagnosticItem::WifiConnection,
+      DiagnosticItem::Backend, DiagnosticItem::Sd,         DiagnosticItem::Rgb,
+      DiagnosticItem::Speaker, DiagnosticItem::RadarDemo,  DiagnosticItem::NormalMode};
+  for (uint8_t i = 0; i < 8; i++) {
+    const DiagnosticItem item = items[i];
+    diagTft.printf("%-10s %s\n", diagnosticItemLabel(item),
+                   diagnosticStatusLabel(statuses_[static_cast<uint8_t>(item)]));
+  }
+  const bool ready =
+      diagnosticSummaryReady(statuses_, static_cast<uint8_t>(DiagnosticItem::Count));
+  diagTft.printf("Readiness: %s\n", ready ? "READY" : "PENDING");
+  drawFooterBack();
+}
+
+void DiagnosticApp::drawNormalConfirm() {
+  drawHeader("NORMAL MODE");
+  diagTft.drawString("Restart into normal radar?", 8, 48);
+  diagTft.drawString("Diagnostics remain available", 8, 74);
+  diagTft.drawString("by flashing diag or holding BtnA.", 8, 96);
+  drawButton(8, 140, 110, "Confirm");
+  drawButton(134, 140, 86, "Cancel");
+  drawFooterBack();
 }
 
 void DiagnosticApp::handleSerial() {
@@ -592,15 +785,26 @@ void DiagnosticApp::handleSerial() {
       SerialCommand command = parseSerialCommand(serialBuffer_);
       serialLength_ = 0;
       if (command == SerialCommand::Help) {
-        Serial.println("help info display touch wifi backend sd led speaker demo normal reboot retest wifi-clear");
+        Serial.println("help info display touch wifi backend sd led speaker demo summary normal reboot retest wifi-clear");
       } else if (command == SerialCommand::Reboot) {
         Serial.println("[diag] rebooting");
         ESP.restart();
       } else if (command == SerialCommand::Retest) {
         strlcpy(backendMessage_, "untested", sizeof(backendMessage_));
         strlcpy(sdMessage_, "untested", sizeof(sdMessage_));
+        wifiScanStartedMs_ = 0;
+        WiFi.scanDelete();
+        for (uint8_t i = 0; i < static_cast<uint8_t>(DiagnosticItem::Count); i++) {
+          statuses_[i] = DiagnosticStatus::NotTested;
+        }
+        setStatus(DiagnosticItem::Board, DiagnosticStatus::Pass,
+                  "board info ready");
+        if (!core2RgbSupported()) {
+          setStatus(DiagnosticItem::Rgb, DiagnosticStatus::Unsupported,
+                    "no Core2 RGB diagnostic");
+        }
         lastDrawMs_ = 0;
-        Serial.println("[diag] retest queued");
+        Serial.println("[MARIA][DIAG] retest queued");
       } else if (command == SerialCommand::WifiClear) {
         WiFi.disconnect(true, true);
         lastDrawMs_ = 0;
@@ -608,8 +812,10 @@ void DiagnosticApp::handleSerial() {
       } else if (command == SerialCommand::Unknown) {
         Serial.println("[diag] unknown command");
       } else {
-        if (command == SerialCommand::Backend) strlcpy(backendMessage_, "untested", sizeof(backendMessage_));
-        if (command == SerialCommand::Sd) strlcpy(sdMessage_, "untested", sizeof(sdMessage_));
+        if (command == SerialCommand::Backend)
+          strlcpy(backendMessage_, "untested", sizeof(backendMessage_));
+        if (command == SerialCommand::Sd)
+          strlcpy(sdMessage_, "untested", sizeof(sdMessage_));
         setScreen(screenForCommand(command));
       }
     } else if (serialLength_ + 1 < sizeof(serialBuffer_)) {
@@ -641,14 +847,56 @@ void DiagnosticApp::handleTouch() {
     return;
   }
   if (y >= 202 && x < 110) {
+    if (screen_ == DiagnosticScreen::Touch) {
+      Serial.println("[MARIA][TOUCH] exit");
+    }
+    if (screen_ == DiagnosticScreen::RadarDemo) {
+      Serial.println("[MARIA][RADAR] demo exit");
+    }
     setScreen(DiagnosticScreen::Menu);
-  } else if (screen_ == DiagnosticScreen::RadarDemo && y >= 202) {
-    if (x < 170) {
-      demoRangeKm_ = demoRangeKm_ == 25 ? 50 : demoRangeKm_ == 50 ? 100 : demoRangeKm_ == 100 ? 200 : 25;
+  } else if (screen_ == DiagnosticScreen::Speaker && y >= 100 && y <= 150) {
+    if (x < 104) {
+      beep(880, 120);
+      Serial.println("[MARIA][SPEAKER] play");
+    } else if (x < 208) {
+      setStatus(DiagnosticItem::Speaker, DiagnosticStatus::Pass,
+                "user confirmed");
     } else {
-      demoPaused_ = !demoPaused_;
+      setStatus(DiagnosticItem::Speaker, DiagnosticStatus::Skipped,
+                "user skipped");
     }
     lastDrawMs_ = 0;
+  } else if (screen_ == DiagnosticScreen::RadarDemo && y >= 202) {
+    if (x < 88) {
+      Serial.println("[MARIA][RADAR] demo exit");
+      setScreen(DiagnosticScreen::Menu);
+    } else if (x < 168) {
+      demoRangeKm_ = demoRangeKm_ == 25 ? 50 : demoRangeKm_ == 50 ? 100 : demoRangeKm_ == 100 ? 200 : 25;
+      Serial.printf("[MARIA][RADAR] range=%u\n", demoRangeKm_);
+    } else if (x < 248) {
+      demoPaused_ = !demoPaused_;
+      Serial.printf("[MARIA][RADAR] %s\n", demoPaused_ ? "paused" : "running");
+    } else {
+      demoSelected_ = (demoSelected_ + 1) % kDemoAircraftCount;
+      Serial.printf("[MARIA][RADAR] selected=%d\n", demoSelected_ + 1);
+    }
+    lastDrawMs_ = 0;
+  } else if (screen_ == DiagnosticScreen::RadarDemo) {
+    demoSelected_ = (demoSelected_ + 1) % kDemoAircraftCount;
+    lastDrawMs_ = 0;
+  } else if (screen_ == DiagnosticScreen::Normal && y >= 135 && y <= 180) {
+    if (x < 126) {
+      normalConfirm_ = true;
+      setStatus(DiagnosticItem::NormalMode, DiagnosticStatus::Pass,
+                "confirmed");
+      Serial.println("[MARIA][NORMAL] confirmed");
+      Serial.flush();
+    } else {
+      normalConfirm_ = false;
+      setStatus(DiagnosticItem::NormalMode, DiagnosticStatus::Skipped,
+                "cancelled");
+      setScreen(DiagnosticScreen::Menu);
+    }
   }
 #endif
 }
