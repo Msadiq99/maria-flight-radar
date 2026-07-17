@@ -15,7 +15,33 @@ enum class DiagnosticScreen : uint8_t {
   Led,
   Speaker,
   RadarDemo,
+  Summary,
   Normal,
+};
+
+enum class DiagnosticItem : uint8_t {
+  Display,
+  Touch,
+  Board,
+  WifiScan,
+  WifiConnection,
+  Backend,
+  Sd,
+  Rgb,
+  Speaker,
+  RadarDemo,
+  NormalMode,
+  Count,
+};
+
+enum class DiagnosticStatus : uint8_t {
+  NotTested,
+  Running,
+  Pass,
+  Fail,
+  Unsupported,
+  Skipped,
+  Timeout,
 };
 
 enum class SerialCommand : uint8_t {
@@ -30,6 +56,7 @@ enum class SerialCommand : uint8_t {
   Led,
   Speaker,
   Demo,
+  Summary,
   Normal,
   Reboot,
   Retest,
@@ -85,5 +112,11 @@ BackendDiagnosticState classifyBackendStatus(int httpStatus, bool jsonOk,
 WifiDiagnosticState classifyWifiStatus(bool connected, bool portalActive,
                                        bool connecting);
 DemoAircraft demoAircraftAt(uint8_t index, uint32_t tickMs);
+const char *diagnosticStatusLabel(DiagnosticStatus status);
+const char *diagnosticItemLabel(DiagnosticItem item);
+bool diagnosticStatusIsComplete(DiagnosticStatus status);
+bool diagnosticSummaryReady(const DiagnosticStatus *statuses, uint8_t count);
+bool diagnosticRgbSupported(bool core2Profile, bool rgbPinsAvailable);
+bool core2RgbSupported();
 
 }  // namespace MariaRadar

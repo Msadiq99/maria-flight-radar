@@ -26,9 +26,15 @@ class DiagnosticApp {
   void drawLedTest();
   void drawSpeakerTest();
   void drawRadarDemo();
+  void drawSummary();
+  void drawNormalConfirm();
   void drawHeader(const char *title);
   void drawButton(int16_t x, int16_t y, int16_t w, const char *label);
+  void drawFooterBack();
   void printBoardInfo();
+  void logStartup();
+  void setStatus(DiagnosticItem item, DiagnosticStatus status,
+                 const char *detail = nullptr);
   void handleSerial();
   void handleTouch();
   void setScreen(DiagnosticScreen screen);
@@ -44,6 +50,9 @@ class DiagnosticApp {
   uint32_t lastDrawMs_ = 0;
   uint8_t displayStep_ = 0;
   uint8_t ledStep_ = 0;
+  uint8_t touchEvents_ = 0;
+  uint8_t speakerPromptStep_ = 0;
+  uint32_t wifiScanStartedMs_ = 0;
   int backendStatus_ = 0;
   uint32_t backendDurationMs_ = 0;
   char backendMessage_[64] = "untested";
@@ -62,6 +71,8 @@ class DiagnosticApp {
   int16_t lastMappedX_ = 0;
   int16_t lastMappedY_ = 0;
   bool lastTouchDetected_ = false;
+  bool normalConfirm_ = false;
+  DiagnosticStatus statuses_[static_cast<uint8_t>(DiagnosticItem::Count)]{};
 };
 
 bool diagnosticBootRequested();

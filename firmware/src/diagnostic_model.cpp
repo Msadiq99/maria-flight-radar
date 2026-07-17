@@ -30,6 +30,7 @@ SerialCommand parseSerialCommand(const char *command) {
   if (equals(command, "led")) return SerialCommand::Led;
   if (equals(command, "speaker")) return SerialCommand::Speaker;
   if (equals(command, "demo")) return SerialCommand::Demo;
+  if (equals(command, "summary")) return SerialCommand::Summary;
   if (equals(command, "normal")) return SerialCommand::Normal;
   if (equals(command, "reboot")) return SerialCommand::Reboot;
   if (equals(command, "retest")) return SerialCommand::Retest;
@@ -57,6 +58,8 @@ DiagnosticScreen screenForCommand(SerialCommand command) {
       return DiagnosticScreen::Speaker;
     case SerialCommand::Demo:
       return DiagnosticScreen::RadarDemo;
+    case SerialCommand::Summary:
+      return DiagnosticScreen::Summary;
     case SerialCommand::Normal:
       return DiagnosticScreen::Normal;
     case SerialCommand::Help:
@@ -120,6 +123,87 @@ DemoAircraft demoAircraftAt(uint8_t index, uint32_t tickMs) {
   aircraft.altitudeMeters = 600.0f + index * 850.0f;
   aircraft.speedKmph = 160.0f + index * 35.0f;
   return aircraft;
+}
+
+const char *diagnosticStatusLabel(DiagnosticStatus status) {
+  switch (status) {
+    case DiagnosticStatus::NotTested:
+      return "NOT";
+    case DiagnosticStatus::Running:
+      return "RUN";
+    case DiagnosticStatus::Pass:
+      return "PASS";
+    case DiagnosticStatus::Fail:
+      return "FAIL";
+    case DiagnosticStatus::Unsupported:
+      return "UNSUP";
+    case DiagnosticStatus::Skipped:
+      return "SKIP";
+    case DiagnosticStatus::Timeout:
+      return "TIME";
+  }
+  return "UNK";
+}
+
+const char *diagnosticItemLabel(DiagnosticItem item) {
+  switch (item) {
+    case DiagnosticItem::Display:
+      return "Display";
+    case DiagnosticItem::Touch:
+      return "Touch";
+    case DiagnosticItem::Board:
+      return "Board";
+    case DiagnosticItem::WifiScan:
+      return "WiFi scan";
+    case DiagnosticItem::WifiConnection:
+      return "WiFi conn";
+    case DiagnosticItem::Backend:
+      return "Backend";
+    case DiagnosticItem::Sd:
+      return "SD";
+    case DiagnosticItem::Rgb:
+      return "RGB";
+    case DiagnosticItem::Speaker:
+      return "Speaker";
+    case DiagnosticItem::RadarDemo:
+      return "Radar";
+    case DiagnosticItem::NormalMode:
+      return "Normal";
+    case DiagnosticItem::Count:
+      return "Count";
+  }
+  return "Unknown";
+}
+
+bool diagnosticStatusIsComplete(DiagnosticStatus status) {
+  return status == DiagnosticStatus::Pass || status == DiagnosticStatus::Fail ||
+         status == DiagnosticStatus::Unsupported ||
+         status == DiagnosticStatus::Skipped ||
+         status == DiagnosticStatus::Timeout;
+}
+
+bool diagnosticSummaryReady(const DiagnosticStatus *statuses, uint8_t count) {
+  if (statuses == nullptr || count == 0) return false;
+  for (uint8_t i = 0; i < count; i++) {
+    if (statuses[i] == DiagnosticStatus::Fail ||
+        statuses[i] == DiagnosticStatus::Timeout) {
+      return false;
+    }
+    if (!diagnosticStatusIsComplete(statuses[i])) return false;
+  }
+  return true;
+}
+
+bool diagnosticRgbSupported(bool core2Profile, bool rgbPinsAvailable) {
+  return !core2Profile && rgbPinsAvailable;
+}
+
+bool core2RgbSupported() {
+#if defined(MARIA_M5STACK_CORE2_RADAR_TERMINAL)
+  return diagnosticRgbSupported(true, false);
+#else
+  return diagnosticRgbSupported(false, true);
+#endif
 }
 
 }  // namespace MariaRadar
