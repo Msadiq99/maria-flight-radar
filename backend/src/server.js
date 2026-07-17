@@ -651,6 +651,41 @@ app.get('/api/radar/sources', (_req, res) => {
   res.json({ sources: radarService.sources() });
 });
 
+app.get('/api/radar/source-status', async (req, res) => {
+  try {
+    const snapshot = await radarService.snapshot(req.query);
+    const local = snapshot.sourceHealth.find(
+      (source) => source.source === 'local_adsb'
+    );
+    res.set('Cache-Control', 'no-store');
+    res.json({
+      status: 'ok',
+      activeSource: snapshot.effectiveSources[0] || 'simulation',
+      sourceMode: snapshot.activeSourceMode,
+      receiverConfigured: local?.enabled || false,
+      receiverReachable: local?.status === 'healthy',
+      receiverUrl:
+        process.env.LOCAL_ADSB_ENABLED === 'true'
+          ? (process.env.LOCAL_ADSB_BASE_URL || 'http://127.0.0.1:8080') +
+            (process.env.LOCAL_ADSB_AIRCRAFT_PATH || '/data/aircraft.json')
+          : null,
+      lastSuccessfulPollAt: local?.lastSuccessAt || null,
+      lastPayloadAt: local?.lastSuccessAt || null,
+      aircraftCount: local?.aircraftCount || 0,
+      positionCount: snapshot.aircraft.filter(
+        (aircraft) => aircraft.quality?.positionValid
+      ).length,
+      staleAircraftCount: snapshot.aircraft.filter((aircraft) => aircraft.stale)
+        .length,
+      fallbackActive: snapshot.effectiveSources[0] === 'simulation',
+      openskyEnabled: OPENSKY_ENABLED,
+      health: local || null,
+    });
+  } catch (error) {
+    res.status(503).json({ status: 'error', error: error.message });
+  }
+});
+
 app.get('/api/radar/aircraft/:icao24', async (req, res) => {
   try {
     const snapshot = await radarService.snapshot(req.query);
