@@ -163,6 +163,18 @@ Visually confirmed:
 
 ## Zero-Subscription Statement
 
+## Real ADS-B Readiness
+
+- Adapter implementation: IMPLEMENTED for readsb/dump1090 aircraft.json.
+- Supported output: VALIDATED WITH FIXTURE for position, altitude, speed, track,
+  vertical rate, callsign, squawk, category, emergency, signal, and age fields.
+- Simulator fallback: IMPLEMENTED and remains enabled for development.
+- Web readiness: IMPLEMENTED through the existing radar snapshot polling path.
+- Core2 readiness: IMPLEMENTED through the bounded compact payload endpoint.
+- Physical RTL-SDR validation: PENDING HARDWARE.
+
+No real RTL-SDR payload has been observed in this environment.
+
 MARIA MVP is designed to run fully locally. The required live data path is:
 
 ```text

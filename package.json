@@ -13,6 +13,7 @@
     "dev:preflight": "node scripts/check-dev-ports.mjs",
     "dev:all": "npm run dev:preflight && node scripts/dev-all.mjs",
     "dev:check": "node scripts/check-dev-services.mjs",
+    "adsb:check": "node scripts/check-adsb.mjs",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test": "vitest run src",

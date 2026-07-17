@@ -797,7 +797,7 @@ if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
-  app.listen(PORT, HOST, () => {
+  const server = app.listen(PORT, HOST, () => {
     const interfaces = networkInterfaces();
     const lanAddress = Object.values(interfaces)
       .flat()
@@ -812,6 +812,10 @@ if (
     console.log(
       `[MARIA][BACKEND] opensky=${OPENSKY_ENABLED ? 'enabled' : 'disabled'}`
     );
+  });
+  server.on('error', (error) => {
+    console.error('[MARIA][BACKEND] startup-failed=' + error.message);
+    process.exitCode = 1;
   });
 }
 

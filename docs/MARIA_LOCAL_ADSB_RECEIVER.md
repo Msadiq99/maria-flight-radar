@@ -16,10 +16,17 @@ Example backend configuration:
 
 ```env
 LOCAL_ADSB_ENABLED=true
-LOCAL_ADSB_BASE_URL=http://localhost:8080
+LOCAL_ADSB_BASE_URL=http://127.0.0.1:8080
 LOCAL_ADSB_AIRCRAFT_PATH=/data/aircraft.json
+LOCAL_ADSB_TIMEOUT_MS=2000
+LOCAL_ADSB_POLL_INTERVAL_MS=1000
+LOCAL_ADSB_STALE_AFTER_MS=10000
+LOCAL_ADSB_RECEIVER_LAT=
+LOCAL_ADSB_RECEIVER_LON=
+LOCAL_ADSB_MAX_RANGE_NM=250
 MARIA_SOURCE_PRIORITY=local_adsb,simulation
 MARIA_SIMULATION_FALLBACK=true
+CORE2_MAX_TARGETS=12
 ```
 
 Before SDR hardware is available, enable deterministic local ADS-B-shaped
@@ -36,3 +43,20 @@ degrees, and kilometers.
 
 Keep receiver URLs and exact station coordinates out of committed files when
 they identify a private installation.
+
+## Verify the receiver
+
+MARIA supports common readsb and dump1090 JSON endpoints:
+
+```bash
+curl http://127.0.0.1:8080/data/aircraft.json
+npm run adsb:check
+curl http://127.0.0.1:8081/api/radar/source-status
+```
+
+The diagnostic checks only configured localhost endpoints. Without a receiver,
+it reports the receiver as unavailable and MARIA uses deterministic simulation
+fallback. When valid fresh aircraft are received, Auto mode uses local ADS-B
+only and does not merge simulated targets.
+
+The receiver is receive-only. Do not transmit radio signals.
