@@ -130,22 +130,72 @@ void RadarScreen::drawRadar(const RadarPreferences &preferences,
                             int selectedIndex, FeedState feedState,
                             uint32_t nowMs) {
   tft.fillScreen(kBg);
-  tft.setTextColor(kCyan, kBg);
-  tft.drawString("MARIA RADAR", 6, 4);
-  char header[56];
-  snprintf(header, sizeof(header), "%u km  %u targets  %s",
-           preferences.rangeKm, count, feedStateLabel(feedState));
-  tft.drawString(header, 6, 21);
-  if (count > 0 && aircraft != nullptr && aircraft[0].source[0] != '\0') {
-    tft.drawString(strstr(aircraft[0].source, "sim") != nullptr ? "DEMO" :
-                       "LIVE",
-                   170, 4);
-  }
-  tft.drawString("STAT", 214, 4);
-  tft.drawString("SET", 268, 4);
-
+  const RadarSourceBadge badge = radarSourceBadge(
+      aircraft, count, feedState == FeedState::StaleTraffic,
+      feedState == FeedState::BackendUnavailable ||
+          feedState == FeedState::WifiDisconnected);
   const RadarScreenGeometry geometry =
       radarGeometry(MariaBoard::kDisplayWidth, MariaBoard::kDisplayHeight);
+  const uint16_t badgeColor =
+      badge == RadarSourceBadge::Live ? kGreen :
+      badge == RadarSourceBadge::Demo ? kCyan :
+      badge == RadarSourceBadge::Cache ? kAmber : kRed;
+
+  tft.setTextColor(kCyan, kBg);
+  tft.drawString("MARIA FLIGHT RADAR", 5, 3);
+  tft.setTextColor(badgeColor, kBg);
+  tft.drawString(radarSourceBadgeLabel(badge), 207, 3);
+  char line[24];
+  snprintf(line, sizeof(line), "%u AC", count);
+  tft.drawString(line, 275, 3);
+  tft.drawFastHLine(0, 20, MariaBoard::kDisplayWidth, 0x03ef);
+
+  tft.setTextColor(kCyan, kBg);
+  tft.drawString("OVERVIEW", 4, 26);
+  tft.setTextColor(kWhite, kBg);
+  snprintf(line, sizeof(line), "AC  %u", count);
+  tft.drawString(line, 5, 46);
+  snprintf(line, sizeof(line), "RNG %uk", preferences.rangeKm);
+  tft.drawString(line, 5, 72);
+  snprintf(line, sizeof(line), "LAB %s", preferences.labelsEnabled ? "ON" : "OFF");
+  tft.drawString(line, 5, 98);
+  tft.setTextColor(badgeColor, kBg);
+  tft.drawString(radarSourceBadgeLabel(badge), 5, 124);
+  tft.setTextColor(0x39e7, kBg);
+  tft.drawFastVLine(71, 23, 196, 0x0861);
+  tft.drawFastVLine(248, 23, 196, 0x0861);
+
+  tft.setTextColor(kCyan, kBg);
+  tft.drawString("SELECTED", 252, 26);
+  const Aircraft *selected =
+      selectedIndex >= 0 && selectedIndex < count ? &aircraft[selectedIndex] : nullptr;
+  if (selected == nullptr) {
+    tft.setTextColor(kWhite, kBg);
+    tft.drawString("NONE", 252, 48);
+  } else {
+    const char *name = selected->callsign[0] ? selected->callsign : selected->id;
+    char shortName[7];
+    strlcpy(shortName, name, sizeof(shortName));
+    tft.setTextColor(kWhite, kBg);
+    tft.drawString(shortName, 252, 48);
+    snprintf(line, sizeof(line), "A %.0f", selected->altitudeValid
+                 ? selected->altitudeMeters * 3.281f : -1.0f);
+    tft.drawString(line, 252, 72);
+    snprintf(line, sizeof(line), "S %.0f", selected->speedValid
+                 ? selected->speedKmph * 0.540f : -1.0f);
+    tft.drawString(line, 252, 94);
+    snprintf(line, sizeof(line), "H %.0f", selected->headingValid
+                 ? selected->headingDeg : -1.0f);
+    tft.drawString(line, 252, 116);
+    snprintf(line, sizeof(line), "D %.1f", selected->distanceKm * 0.540f);
+    tft.drawString(line, 252, 138);
+    if (selected->squawk[0]) {
+      snprintf(line, sizeof(line), "SQ %s", selected->squawk);
+      tft.setTextColor(kAmber, kBg);
+      tft.drawString(line, 252, 160);
+    }
+  }
+
   tft.drawCircle(geometry.centerX, geometry.centerY, geometry.radius, kCyan);
   tft.drawCircle(geometry.centerX, geometry.centerY, geometry.radius / 2,
                  0x03ef);
@@ -155,8 +205,12 @@ void RadarScreen::drawRadar(const RadarPreferences &preferences,
                     geometry.radius * 2, 0x03ef);
   tft.drawFastVLine(geometry.centerX, geometry.centerY - geometry.radius,
                     geometry.radius * 2, 0x03ef);
-  tft.drawString("N", geometry.centerX - 4,
-                 geometry.centerY - geometry.radius - 16);
+  tft.setTextColor(kCyan, kBg);
+  tft.drawString("N", geometry.centerX - 4, geometry.centerY - geometry.radius - 13);
+  tft.drawString("E", geometry.centerX + geometry.radius + 3, geometry.centerY - 5);
+  tft.drawString("S", geometry.centerX - 4, geometry.centerY + geometry.radius + 3);
+  tft.drawString("W", geometry.centerX - geometry.radius - 12, geometry.centerY - 5);
+  tft.fillCircle(geometry.centerX, geometry.centerY, 3, kWhite);
 
   if (!preferences.sweepPaused) {
     const float sweep = (nowMs % 4000) * 0.09f;
@@ -180,19 +234,29 @@ void RadarScreen::drawRadar(const RadarPreferences &preferences,
     tft.fillTriangle(p.x, p.y - 5, p.x + 4, p.y + 4, p.x - 4, p.y + 4,
                      selected ? kWhite : color);
     if (selected) tft.drawCircle(p.x, p.y, 9, kWhite);
-    if (preferences.labelsEnabled && (selected || labels < 3)) {
+    if (preferences.labelsEnabled && (selected || labels < 6)) {
       const char *label = target.callsign[0] ? target.callsign : target.id;
       tft.setTextColor(selected ? kWhite : color, kBg);
-      tft.drawString(label, p.x + 7, p.y - 6);
+      const int16_t labelX = p.x < geometry.centerX ? p.x + 6 : p.x - 30;
+      const int16_t labelY = p.y < geometry.centerY ? p.y + 4 : p.y - 12;
+      if (labelX > geometry.centerX - geometry.radius &&
+          labelX < geometry.centerX + geometry.radius - 20 &&
+          labelY > geometry.centerY - geometry.radius &&
+          labelY < geometry.centerY + geometry.radius - 8) {
+        char shortLabel[8];
+        strlcpy(shortLabel, label, sizeof(shortLabel));
+        tft.drawString(shortLabel, labelX, labelY);
+      }
       labels++;
     }
   }
-
-  drawButton(4, 204, 58, "Prev");
-  drawButton(66, 204, 58, "Next");
-  drawButton(128, 204, 58, "Range");
-  drawButton(190, 204, 58, preferences.sweepPaused ? "Run" : "Pause");
-  drawButton(252, 204, 64, "Open");
+  tft.setTextColor(feedState == FeedState::LiveTraffic ? kGreen : badgeColor, kBg);
+  snprintf(line, sizeof(line), "WIFI %s | API %s | %s | %us",
+           feedState == FeedState::WifiDisconnected ? "OFF" : "OK",
+           feedState == FeedState::BackendUnavailable ? "FAIL" : "OK",
+           radarSourceBadgeLabel(badge),
+           count ? static_cast<unsigned>((nowMs - aircraft[0].updatedAtMs) / 1000) : 0);
+  tft.drawString(line, 4, 222);
 }
 
 void RadarScreen::formatAircraftLine(char *buffer, size_t size,

@@ -1,6 +1,7 @@
 #include "radar_terminal/radar_model.h"
 
 #include <math.h>
+#include <string.h>
 
 namespace MariaRadar {
 
@@ -61,12 +62,15 @@ ScreenPoint projectTarget(float bearing, float distance, uint16_t rangeKm,
 
 RadarScreenGeometry radarGeometry(uint16_t width, uint16_t height) {
   RadarScreenGeometry geometry{};
-  geometry.centerX = static_cast<int16_t>(width / 2 - 34);
-  geometry.centerY = static_cast<int16_t>(height / 2 - 4);
-  const int16_t horizontalLimit = static_cast<int16_t>(geometry.centerX - 36);
-  const int16_t verticalLimit = static_cast<int16_t>(height - 154);
+  const int16_t header = height >= 220 ? 22 : 18;
+  const int16_t footer = height >= 220 ? 18 : 16;
+  const int16_t side = width >= 300 ? 72 : 38;
+  geometry.centerX = static_cast<int16_t>(width / 2);
+  geometry.centerY = static_cast<int16_t>((header + height - footer) / 2);
+  const int16_t horizontalLimit = static_cast<int16_t>(width / 2 - side - 8);
+  const int16_t verticalLimit = static_cast<int16_t>((height - header - footer) / 2 - 5);
   geometry.radius = horizontalLimit < verticalLimit ? horizontalLimit : verticalLimit;
-  if (geometry.radius < 48) geometry.radius = 48;
+  if (geometry.radius < 44) geometry.radius = 44;
   return geometry;
 }
 
@@ -75,13 +79,21 @@ TerminalTouchAction terminalTouchActionAt(int16_t x, int16_t y, uint16_t width,
   if (x < 0 || y < 0 || x >= width || y >= height) {
     return TerminalTouchAction::None;
   }
-  if (y >= height - 38) {
-    const int16_t bucket = static_cast<int16_t>((x * 5) / width);
-    if (bucket == 0) return TerminalTouchAction::Previous;
-    if (bucket == 1) return TerminalTouchAction::Next;
-    if (bucket == 2) return TerminalTouchAction::Range;
-    if (bucket == 3) return TerminalTouchAction::Pause;
+  if (y >= height - 28) {
+    if (x < width / 5) return TerminalTouchAction::Previous;
+    if (x < (width * 2) / 5) return TerminalTouchAction::Next;
+    if (x < (width * 3) / 5) return TerminalTouchAction::Range;
+    if (x < (width * 4) / 5) return TerminalTouchAction::Pause;
     return TerminalTouchAction::Details;
+  }
+  if (width >= 300 && y >= 22 && y < height - 18) {
+    if (x < 72) {
+      if (y < 62) return TerminalTouchAction::Next;
+      if (y < 102) return TerminalTouchAction::Range;
+      if (y < 142) return TerminalTouchAction::ToggleLabels;
+      return TerminalTouchAction::Status;
+    }
+    if (x >= width - 76) return TerminalTouchAction::Next;
   }
   if (y < 34 && x > width - 66) return TerminalTouchAction::Settings;
   if (y < 34 && x > width - 118) return TerminalTouchAction::Status;
@@ -165,6 +177,33 @@ bool validPreferences(const RadarPreferences &preferences) {
          z.warningKm < z.advisoryKm && z.advisoryKm <= preferences.rangeKm &&
          preferences.touchMinX < preferences.touchMaxX &&
          preferences.touchMinY < preferences.touchMaxY;
+}
+
+RadarSourceBadge radarSourceBadge(const Aircraft *aircraft, uint8_t count,
+                                  bool stale, bool offline) {
+  if (count > 0 && aircraft != nullptr) {
+    if (strstr(aircraft[0].source, "sim") != nullptr) {
+      return RadarSourceBadge::Demo;
+    }
+    if (stale) return RadarSourceBadge::Cache;
+    return RadarSourceBadge::Live;
+  }
+  if (offline) return RadarSourceBadge::Offline;
+  return RadarSourceBadge::Demo;
+}
+
+const char *radarSourceBadgeLabel(RadarSourceBadge badge) {
+  switch (badge) {
+    case RadarSourceBadge::Live:
+      return "LIVE";
+    case RadarSourceBadge::Cache:
+      return "CACHE";
+    case RadarSourceBadge::Demo:
+      return "DEMO";
+    case RadarSourceBadge::Offline:
+      return "OFFLINE";
+  }
+  return "OFFLINE";
 }
 
 }  // namespace MariaRadar

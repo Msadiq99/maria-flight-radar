@@ -47,6 +47,13 @@ enum class TerminalTouchAction : uint8_t {
   Settings,
 };
 
+enum class RadarSourceBadge : uint8_t {
+  Live,
+  Cache,
+  Demo,
+  Offline,
+};
+
 struct Aircraft {
   char id[16] = "";
   char callsign[16] = "";
@@ -121,5 +128,8 @@ VerticalState verticalState(const Aircraft &aircraft);
 int selectedAfterFiltering(const Aircraft *aircraft, uint8_t count,
                            int selectedIndex, AltitudeFilter filter);
 bool validPreferences(const RadarPreferences &preferences);
+RadarSourceBadge radarSourceBadge(const Aircraft *aircraft, uint8_t count,
+                                  bool stale, bool offline);
+const char *radarSourceBadgeLabel(RadarSourceBadge badge);
 
 }  // namespace MariaRadar
