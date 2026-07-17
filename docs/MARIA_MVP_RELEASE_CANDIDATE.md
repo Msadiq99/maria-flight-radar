@@ -122,6 +122,17 @@ Automated and API-level verification from this RC pass:
 
 ## Core2 Runtime Evidence
 
+## Core2 Radar Console UI
+
+- Console layout: IMPLEMENTED.
+- Native build validation: PHYSICAL VALIDATION PENDING.
+- Flash validation: PHYSICAL VALIDATION PENDING.
+- Physical display validation: PHYSICAL VALIDATION PENDING.
+
+The Core2 console now uses an original MARIA overview/radar/selected-aircraft
+layout with source badges, bounded labels, and the existing deterministic
+fallback. See `[MARIA_CORE2_RADAR_UI.md](MARIA_CORE2_RADAR_UI.md)`.
+
 - Firmware environment: `maria-m5stack-core2`.
 - Serial port: `/dev/cu.usbserial-537A0079331`.
 - Upload result: successful; bootloader, partition table, and application
