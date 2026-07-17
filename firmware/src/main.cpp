@@ -54,6 +54,7 @@ int selectedAircraft = -1;
 bool diagnosticsActive = false;
 
 void bootStatus(const char *stage, const char *state, const char *detail = nullptr) {
+#if defined(MARIA_M5STACK_CORE2_RADAR_TERMINAL)
   M5.Display.fillScreen(TFT_BLACK);
   M5.Display.setTextColor(TFT_CYAN, TFT_BLACK);
   M5.Display.setTextFont(2);
@@ -63,6 +64,7 @@ void bootStatus(const char *stage, const char *state, const char *detail = nullp
   M5.Display.println("BOOTING...");
   M5.Display.printf("%s  %s\n", stage, state);
   if (detail != nullptr) M5.Display.println(detail);
+#endif
   Serial.printf("[MARIA][BOOT] %s=%s%s%s\n", stage, state,
                 detail == nullptr ? "" : " ", detail == nullptr ? "" : detail);
   Serial.flush();

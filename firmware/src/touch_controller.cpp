@@ -87,6 +87,8 @@ TouchAction TouchController::hitTest(int16_t x, int16_t y) const {
       return TouchAction::Status;
     case TerminalTouchAction::Settings:
       return TouchAction::Settings;
+    case TerminalTouchAction::ToggleLabels:
+      return TouchAction::ToggleLabels;
     case TerminalTouchAction::None:
       return TouchAction::None;
   }

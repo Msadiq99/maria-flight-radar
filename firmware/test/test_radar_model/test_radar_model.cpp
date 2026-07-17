@@ -1,5 +1,7 @@
 #include <unity.h>
 
+#include <cstdio>
+
 #include "radar_terminal/diagnostic_model.h"
 #include "radar_terminal/radar_model.h"
 
@@ -220,11 +222,11 @@ void test_demo_aircraft_motion_is_bounded() {
 
 void test_source_badges() {
   Aircraft aircraft{};
-  strlcpy(aircraft.source, "simulation", sizeof(aircraft.source));
+  snprintf(aircraft.source, sizeof(aircraft.source), "%s", "simulation");
   TEST_ASSERT_EQUAL_UINT8(
       static_cast<uint8_t>(RadarSourceBadge::Demo),
       static_cast<uint8_t>(radarSourceBadge(&aircraft, 1, false, false)));
-  strlcpy(aircraft.source, "local_adsb", sizeof(aircraft.source));
+  snprintf(aircraft.source, sizeof(aircraft.source), "%s", "local_adsb");
   TEST_ASSERT_EQUAL_UINT8(
       static_cast<uint8_t>(RadarSourceBadge::Live),
       static_cast<uint8_t>(radarSourceBadge(&aircraft, 1, false, false)));

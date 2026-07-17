@@ -45,6 +45,7 @@ enum class TerminalTouchAction : uint8_t {
   Details,
   Status,
   Settings,
+  ToggleLabels,
 };
 
 enum class RadarSourceBadge : uint8_t {
