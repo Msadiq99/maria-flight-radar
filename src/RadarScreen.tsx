@@ -29,9 +29,23 @@ import {
   type RadarPreferencesV2,
 } from './radar/radarPreferences';
 import { useTelemetry } from './telemetry';
-import { useNearbyTraffic } from './traffic';
+import { type HybridSource, useNearbyTraffic } from './traffic';
 
 const RANGES: RadarRange[] = [25, 50, 100, 200];
+const SOURCE_MODES: HybridSource[] = [
+  'auto',
+  'hybrid',
+  'opensky',
+  'local_adsb',
+  'simulation',
+];
+const SOURCE_LABELS: Record<HybridSource, string> = {
+  auto: 'Auto',
+  hybrid: 'Hybrid',
+  opensky: 'OpenSky',
+  local_adsb: 'Local ADS-B',
+  simulation: 'Simulation',
+};
 
 function value(value: string | number | null | undefined, suffix = '') {
   return value === undefined || value === null || value === ''
@@ -64,6 +78,12 @@ export function RadarScreen() {
   const [selectedId, setSelectedId] = useState<string | null>(
     params.get('aircraft')
   );
+  const [sourceMode, setSourceMode] = useState<HybridSource>(() => {
+    const requested = params.get('source') || params.get('mode') || 'auto';
+    return SOURCE_MODES.includes(requested as HybridSource)
+      ? (requested as HybridSource)
+      : 'auto';
+  });
   const updatePreferences = (next: Partial<RadarPreferencesV2>) => {
     setPreferences((current) => {
       const resolved = { ...current, ...next, version: 2 as const };
@@ -72,7 +92,7 @@ export function RadarScreen() {
     });
   };
   const zoneValidation = validateAlertZones(zoneDraft, range);
-  const traffic = useNearbyTraffic(centerLat, centerLon, range);
+  const traffic = useNearbyTraffic(centerLat, centerLon, range, sourceMode);
   const aircraft = useMemo(
     () =>
       centerLat === null || centerLon === null
@@ -222,6 +242,21 @@ export function RadarScreen() {
               ))}
             </select>
           </label>
+          <label>
+            Source
+            <select
+              value={sourceMode}
+              onChange={(event) =>
+                setSourceMode(event.target.value as HybridSource)
+              }
+            >
+              {SOURCE_MODES.map((mode) => (
+                <option key={mode} value={mode}>
+                  {SOURCE_LABELS[mode]}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="radar-check">
             <input
               type="checkbox"
@@ -330,7 +365,11 @@ export function RadarScreen() {
             </div>
             <div>
               <dt>Source</dt>
-              <dd>{traffic.feed.source}</dd>
+              <dd>
+                {SOURCE_LABELS[sourceMode]} ·{' '}
+                {traffic.feed.effectiveSources?.join(', ') ||
+                  traffic.feed.source}
+              </dd>
             </div>
             <div>
               <dt>Update</dt>
@@ -341,6 +380,21 @@ export function RadarScreen() {
               </dd>
             </div>
           </dl>
+          <div className="radar-source-health" aria-label="Aircraft sources">
+            {traffic.sourceHealth.length ? (
+              traffic.sourceHealth.map((source) => (
+                <span
+                  key={source.source}
+                  className={`is-${source.status}`}
+                  title={source.message || undefined}
+                >
+                  {source.source.replace('_', ' ')} · {source.aircraftCount}
+                </span>
+              ))
+            ) : (
+              <span className="is-unconfigured">sources pending</span>
+            )}
+          </div>
         </aside>
         <section className="radar-scope-panel" aria-label="Radar scope">
           <svg

@@ -200,6 +200,33 @@
   font-size: 0.82rem;
   overflow-wrap: anywhere;
 }
+.radar-source-health {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+}
+.radar-source-health span {
+  border: 1px solid #286276;
+  color: #b6d5dc;
+  background: #071019;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+}
+.radar-source-health .is-healthy {
+  border-color: #43d190;
+  color: #8ef0bb;
+}
+.radar-source-health .is-degraded {
+  border-color: #f4d35e;
+  color: #f4d35e;
+}
+.radar-source-health .is-offline,
+.radar-source-health .is-unconfigured {
+  border-color: #8b5561;
+  color: #ffb4ba;
+}
 .radar-scope-panel {
   display: flex;
   flex-direction: column;
