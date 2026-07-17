@@ -30,6 +30,7 @@ class DiagnosticApp {
   void drawButton(int16_t x, int16_t y, int16_t w, const char *label);
   void printBoardInfo();
   void handleSerial();
+  void handleTouch();
   void setScreen(DiagnosticScreen screen);
   void runBackendTest(const GpsFix &fix);
   void runSdTest();

@@ -1,4 +1,5 @@
-#ifdef MARIA_ESP32_28_RADAR_TERMINAL
+#if defined(MARIA_ESP32_28_RADAR_TERMINAL) || \
+    defined(MARIA_M5STACK_CORE2_RADAR_TERMINAL)
 
 #include "radar_terminal/diagnostic_app.h"
 
@@ -7,19 +8,27 @@
 #include <Preferences.h>
 #include <SD.h>
 #include <SPI.h>
-#include <TFT_eSPI.h>
 #include <WiFi.h>
-#include <XPT2046_Touchscreen.h>
 #include <esp_system.h>
 
+#if defined(MARIA_M5STACK_CORE2_RADAR_TERMINAL)
+#include <M5Unified.h>
+#include "board_profiles/m5stack_core2.h"
+#define diagTft M5.Display
+#else
+#include <TFT_eSPI.h>
+#include <XPT2046_Touchscreen.h>
 #include "board_profiles/esp32_2432s028r.h"
+#endif
 #include "config.h"
 
 namespace MariaRadar {
 
 namespace {
+#if defined(MARIA_ESP32_28_RADAR_TERMINAL)
 TFT_eSPI diagTft;
 XPT2046_Touchscreen diagTouch(MariaBoard::kTouchCs, MariaBoard::kTouchIrq);
+#endif
 constexpr uint16_t kBg = TFT_BLACK;
 constexpr uint16_t kPanel = 0x0861;
 constexpr uint16_t kCyan = 0x07ff;
@@ -85,28 +94,43 @@ bool diagnosticBootRequested() {
 #ifdef MARIA_DIAGNOSTIC_MODE
   if (MARIA_DIAGNOSTIC_MODE) return true;
 #endif
+#if defined(MARIA_M5STACK_CORE2_RADAR_TERMINAL)
+  M5.update();
+  return M5.BtnA.isPressed();
+#else
   pinMode(0, INPUT_PULLUP);
   delay(20);
   return digitalRead(0) == LOW;
+#endif
 }
 
 void DiagnosticApp::begin(WifiManager *wifiManager) {
   wifiManager_ = wifiManager;
+#if defined(MARIA_M5STACK_CORE2_RADAR_TERMINAL)
+  MariaBoard::begin();
+#else
   pinMode(MariaBoard::kBacklightPin, OUTPUT);
   digitalWrite(MariaBoard::kBacklightPin, MariaBoard::kBacklightActiveLevel);
+#endif
   if (MariaBoard::kRgbLedRed >= 0) pinMode(MariaBoard::kRgbLedRed, OUTPUT);
   if (MariaBoard::kRgbLedGreen >= 0) pinMode(MariaBoard::kRgbLedGreen, OUTPUT);
   if (MariaBoard::kRgbLedBlue >= 0) pinMode(MariaBoard::kRgbLedBlue, OUTPUT);
+#if defined(MARIA_ESP32_28_RADAR_TERMINAL)
   diagTft.init();
+#endif
   diagTft.setRotation(MariaBoard::kLandscapeRotation);
   diagTft.fillScreen(kBg);
   diagTft.setTextFont(2);
   diagTft.setTextDatum(TL_DATUM);
 #if !MARIA_DISABLE_TOUCH
+#if defined(MARIA_M5STACK_CORE2_RADAR_TERMINAL)
+  touchReady_ = true;
+#else
   SPI.begin(MariaBoard::kTouchSclk, MariaBoard::kTouchMiso,
             MariaBoard::kTouchMosi, MariaBoard::kTouchCs);
   touchReady_ = diagTouch.begin();
   diagTouch.setRotation(MariaBoard::kLandscapeRotation);
+#endif
 #endif
   loadTouchCalibration();
   Serial.println("[diag] MARIA diagnostics ready");
@@ -118,7 +142,9 @@ void DiagnosticApp::begin(WifiManager *wifiManager) {
 DiagnosticScreen DiagnosticApp::screen() const { return screen_; }
 
 void DiagnosticApp::setScreen(DiagnosticScreen screen) {
-  if (screen_ == DiagnosticScreen::Led && screen != DiagnosticScreen::Led) {
+  if (screen_ == DiagnosticScreen::Led && screen != DiagnosticScreen::Led &&
+      MariaBoard::kRgbLedRed >= 0 && MariaBoard::kRgbLedGreen >= 0 &&
+      MariaBoard::kRgbLedBlue >= 0) {
     const bool activeLow = MariaBoard::kRgbActiveLevel == LOW;
     digitalWrite(MariaBoard::kRgbLedRed, rgbOutputLevel(activeLow, false));
     digitalWrite(MariaBoard::kRgbLedGreen, rgbOutputLevel(activeLow, false));
@@ -131,6 +157,7 @@ void DiagnosticApp::setScreen(DiagnosticScreen screen) {
 
 bool DiagnosticApp::poll(const GpsFix &fix) {
   handleSerial();
+  handleTouch();
   uint32_t now = millis();
   if (now - lastDrawMs_ < 250 && screen_ != DiagnosticScreen::RadarDemo) {
     return screen_ == DiagnosticScreen::Normal;
@@ -248,6 +275,20 @@ void DiagnosticApp::drawTouchTest() {
     diagTft.drawString("Touch init failed - use serial menu", 8, 40);
     return;
   }
+#if defined(MARIA_M5STACK_CORE2_RADAR_TERMINAL)
+  M5.update();
+  auto detail = M5.Touch.getDetail();
+  lastTouchDetected_ = detail.isPressed();
+  if (lastTouchDetected_) {
+    lastRawX_ = detail.x;
+    lastRawY_ = detail.y;
+    lastMappedX_ = constrain(detail.x, 0, MariaBoard::kDisplayWidth - 1);
+    lastMappedY_ = constrain(detail.y, 0, MariaBoard::kDisplayHeight - 1);
+  }
+  diagTft.printf("Touch: %s\n", lastTouchDetected_ ? "pressed" : "idle");
+  diagTft.printf("Point: %d,%d\n", lastMappedX_, lastMappedY_);
+  diagTft.println("FT6336U capacitive touch");
+#else
   lastTouchDetected_ = diagTouch.touched();
   if (lastTouchDetected_) {
     TS_Point point = diagTouch.getPoint();
@@ -297,6 +338,7 @@ void DiagnosticApp::drawTouchTest() {
                    lastMappedY_, kAmber);
   diagTft.drawLine(lastMappedX_, lastMappedY_ - 8, lastMappedX_,
                    lastMappedY_ + 8, kAmber);
+#endif
 #endif
   drawButton(8, 202, 86, "Menu");
 }
@@ -348,7 +390,7 @@ void DiagnosticApp::printBoardInfo() {
 }
 
 void DiagnosticApp::drawBoardInfo() {
-  drawHeader("PIN / BOARD INFO");
+  drawHeader("BOARD INFO");
   char line[96];
   snprintf(line, sizeof(line), "Chip rev:%u cores:%u", ESP.getChipRevision(),
            ESP.getChipCores());
@@ -362,9 +404,9 @@ void DiagnosticApp::drawBoardInfo() {
   diagTft.drawString(line, 8, 80);
   diagTft.drawString(MariaBoard::kPcbMarking, 8, 104);
   diagTft.drawString(MariaBoard::kValidationStatus, 8, 128);
-  diagTft.drawString("All GPIO mappings: UNVERIFIED", 8, 152);
-  diagTft.drawString("TFT 12/13/14/15/2 BL21", 8, 176);
-  diagTft.drawString("Touch 39/32/25/33 IRQ36", 8, 198);
+  diagTft.drawString(MariaBoard::kTftController, 8, 152);
+  diagTft.drawString(MariaBoard::kTouchController, 8, 176);
+  diagTft.drawString(MariaBoard::kPinValidationStatus, 8, 198);
 }
 
 void DiagnosticApp::drawWifiTest() {
@@ -442,10 +484,8 @@ void DiagnosticApp::runSdTest() {
 #if MARIA_DISABLE_SD
   strlcpy(sdMessage_, "disabled by build flag", sizeof(sdMessage_));
 #else
-  SPI.begin(MariaBoard::kSdSclk, MariaBoard::kSdMiso, MariaBoard::kSdMosi,
-            MariaBoard::kSdCs);
-  if (!SD.begin(MariaBoard::kSdCs)) {
-    strlcpy(sdMessage_, "SD init failed (pins unverified)", sizeof(sdMessage_));
+  if (!MariaBoard::sdBegin()) {
+    strlcpy(sdMessage_, "SD init failed or unavailable", sizeof(sdMessage_));
     return;
   }
   File file = SD.open("/maria_diag.txt", FILE_WRITE);
@@ -473,6 +513,10 @@ void DiagnosticApp::drawSdTest() {
 }
 
 void DiagnosticApp::runLedStep() {
+  if (MariaBoard::kRgbLedRed < 0 || MariaBoard::kRgbLedGreen < 0 ||
+      MariaBoard::kRgbLedBlue < 0) {
+    return;
+  }
   const bool activeLow = MariaBoard::kRgbActiveLevel == LOW;
   const bool states[][3] = {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {0, 0, 1},
                             {1, 1, 1}, {0, 1, 1}, {1, 1, 0}};
@@ -483,27 +527,27 @@ void DiagnosticApp::runLedStep() {
 }
 
 void DiagnosticApp::drawLedTest() {
-  runLedStep();
   drawHeader("RGB LED TEST");
+  if (MariaBoard::kRgbLedRed < 0 || MariaBoard::kRgbLedGreen < 0 ||
+      MariaBoard::kRgbLedBlue < 0) {
+    diagTft.drawString("Unsupported on this board profile", 8, 40);
+    return;
+  }
+  runLedStep();
   diagTft.printf("Step: %u\n", ledStep_);
   diagTft.drawString("Pins unverified. Slow manual sequence.", 8, 60);
 }
 
 void DiagnosticApp::beep(uint16_t hz, uint16_t ms) {
-#if !MARIA_DISABLE_AUDIO
-  if (MariaBoard::kSpeakerPin >= 0) {
-    tone(MariaBoard::kSpeakerPin, hz, ms);
-  }
-#endif
+  MariaBoard::beep(hz, ms);
 }
 
 void DiagnosticApp::drawSpeakerTest() {
   drawHeader("SPEAKER TEST");
-  if (MariaBoard::kSpeakerPin < 0) {
-    diagTft.drawString("Not tested - pin unverified", 8, 40);
-    diagTft.drawString("No tone generated.", 8, 66);
-    return;
-  }
+#if MARIA_DISABLE_AUDIO
+  diagTft.drawString("Audio disabled by build flag", 8, 40);
+  return;
+#endif
   beep(880, 120);
   diagTft.drawString("Short low-volume beep requested", 8, 40);
 }
@@ -574,6 +618,45 @@ void DiagnosticApp::handleSerial() {
   }
 }
 
+void DiagnosticApp::handleTouch() {
+#if defined(MARIA_M5STACK_CORE2_RADAR_TERMINAL) && !MARIA_DISABLE_TOUCH
+  M5.update();
+  auto detail = M5.Touch.getDetail();
+  if (!detail.wasPressed()) return;
+  const int16_t x = detail.x;
+  const int16_t y = detail.y;
+  if (screen_ == DiagnosticScreen::Menu) {
+    if (y >= 34 && y < 224) {
+      const uint8_t col = x >= 160 ? 1 : 0;
+      const uint8_t row = static_cast<uint8_t>((y - 34) / 38);
+      const uint8_t index = row * 2 + col;
+      const DiagnosticScreen screens[] = {
+          DiagnosticScreen::Display,   DiagnosticScreen::Touch,
+          DiagnosticScreen::BoardInfo, DiagnosticScreen::Wifi,
+          DiagnosticScreen::Backend,   DiagnosticScreen::Sd,
+          DiagnosticScreen::Led,       DiagnosticScreen::Speaker,
+          DiagnosticScreen::RadarDemo, DiagnosticScreen::Normal};
+      if (index < sizeof(screens) / sizeof(screens[0])) setScreen(screens[index]);
+    }
+    return;
+  }
+  if (y >= 202 && x < 110) {
+    setScreen(DiagnosticScreen::Menu);
+  } else if (screen_ == DiagnosticScreen::RadarDemo && y >= 202) {
+    if (x < 170) {
+      demoRangeKm_ = demoRangeKm_ == 25 ? 50 : demoRangeKm_ == 50 ? 100 : demoRangeKm_ == 100 ? 200 : 25;
+    } else {
+      demoPaused_ = !demoPaused_;
+    }
+    lastDrawMs_ = 0;
+  }
+#endif
+}
+
 }  // namespace MariaRadar
+
+#if defined(MARIA_M5STACK_CORE2_RADAR_TERMINAL)
+#undef diagTft
+#endif
 
 #endif
