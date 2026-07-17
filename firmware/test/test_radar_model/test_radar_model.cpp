@@ -17,6 +17,35 @@ void test_cardinal_projection() {
   TEST_ASSERT_EQUAL_INT16(120, east.y);
 }
 
+void test_terminal_screen_geometry() {
+  RadarScreenGeometry core2 = radarGeometry(320, 240);
+  TEST_ASSERT_EQUAL_INT16(126, core2.centerX);
+  TEST_ASSERT_EQUAL_INT16(116, core2.centerY);
+  TEST_ASSERT_TRUE(core2.radius >= 80);
+
+  RadarScreenGeometry compact = radarGeometry(240, 180);
+  TEST_ASSERT_TRUE(compact.radius >= 48);
+  TEST_ASSERT_TRUE(compact.centerX > 0);
+}
+
+void test_terminal_touch_mapping_boundaries() {
+  TEST_ASSERT_EQUAL_UINT8(
+      static_cast<uint8_t>(TerminalTouchAction::Previous),
+      static_cast<uint8_t>(terminalTouchActionAt(5, 225, 320, 240)));
+  TEST_ASSERT_EQUAL_UINT8(
+      static_cast<uint8_t>(TerminalTouchAction::Range),
+      static_cast<uint8_t>(terminalTouchActionAt(150, 225, 320, 240)));
+  TEST_ASSERT_EQUAL_UINT8(
+      static_cast<uint8_t>(TerminalTouchAction::Pause),
+      static_cast<uint8_t>(terminalTouchActionAt(210, 225, 320, 240)));
+  TEST_ASSERT_EQUAL_UINT8(
+      static_cast<uint8_t>(TerminalTouchAction::Settings),
+      static_cast<uint8_t>(terminalTouchActionAt(300, 10, 320, 240)));
+  TEST_ASSERT_EQUAL_UINT8(
+      static_cast<uint8_t>(TerminalTouchAction::None),
+      static_cast<uint8_t>(terminalTouchActionAt(320, 10, 320, 240)));
+}
+
 void test_range_clipping_and_invalid_coordinates() {
   TEST_ASSERT_FALSE(projectTarget(0, 51, 50, 160, 120, 100).visible);
   TEST_ASSERT_FALSE(projectTarget(NAN, 10, 50, 160, 120, 100).visible);
@@ -129,6 +158,8 @@ void test_demo_aircraft_motion_is_bounded() {
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_cardinal_projection);
+  RUN_TEST(test_terminal_screen_geometry);
+  RUN_TEST(test_terminal_touch_mapping_boundaries);
   RUN_TEST(test_range_clipping_and_invalid_coordinates);
   RUN_TEST(test_distance_and_bearing);
   RUN_TEST(test_altitude_filtering_and_selection);
