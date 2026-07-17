@@ -15,8 +15,7 @@ const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const API_KEY = process.env.API_KEY || (IS_PRODUCTION ? '' : 'change-me');
 const MAX_HISTORY_PER_DEVICE = 500;
 const TRAFFIC_SOURCE = process.env.TRAFFIC_SOURCE || 'mock';
-const OPENSKY_USERNAME = process.env.OPENSKY_USERNAME || '';
-const OPENSKY_PASSWORD = process.env.OPENSKY_PASSWORD || '';
+const OPENSKY_ENABLED = process.env.OPENSKY_ENABLED === 'true';
 const CORS_ORIGINS = (process.env.CORS_ORIGINS || '')
   .split(',')
   .map((origin) => origin.trim())
@@ -353,16 +352,9 @@ async function openSkyNearbyAircraft(lat, lon, radiusKm) {
     lamax: String(box.lamax),
     lomax: String(box.lomax),
   });
-  const headers = {};
-
-  if (OPENSKY_USERNAME && OPENSKY_PASSWORD) {
-    headers.Authorization = `Basic ${Buffer.from(`${OPENSKY_USERNAME}:${OPENSKY_PASSWORD}`).toString('base64')}`;
-  }
-
   const response = await fetch(
     `https://opensky-network.org/api/states/all?${params}`,
     {
-      headers,
       signal: AbortSignal.timeout(8000),
     }
   );
@@ -595,7 +587,7 @@ app.get('/api/traffic/nearby', rateLimit(60, 60_000), async (req, res) => {
     );
   }
 
-  if (TRAFFIC_SOURCE === 'opensky') {
+  if (TRAFFIC_SOURCE === 'opensky' && OPENSKY_ENABLED) {
     try {
       const cacheKey = `${lat.toFixed(2)}:${lon.toFixed(2)}:${Math.round(radiusKm / 5) * 5}`;
       const now = Date.now();

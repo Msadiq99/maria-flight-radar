@@ -9,7 +9,8 @@ React/Leaflet web dashboard.
 - Live tracker telemetry from the M5StickC PLUS2 firmware
 - Simulated GPS mode for testing before the physical GPS module is installed
 - Interactive Leaflet map with tracker trail and aircraft overlay
-- Nearby aircraft feed with mock traffic by default and OpenSky-ready backend
+- Nearby aircraft feed designed for local ADS-B first, with deterministic
+  simulation fallback and optional OpenSky integration disabled by default
 - Flyby prediction based on heading, speed, distance, and monitoring radius
 - 3D closest-approach prediction with vertical separation and confidence
 - Configurable browser alerts with callsign, airline, altitude, score, and
@@ -34,7 +35,7 @@ Backend:
 
 ```bash
 cd backend
-PORT=8081 API_KEY=change-me TRAFFIC_SOURCE=mock npm start
+PORT=8081 API_KEY=change-me MARIA_SOURCE_MODE=auto npm start
 ```
 
 Frontend:
@@ -51,23 +52,30 @@ pio run -t upload --upload-port /dev/cu.usbserial-5B1E0424571
 pio device monitor --port /dev/cu.usbserial-5B1E0424571 --baud 115200
 ```
 
-## Traffic sources
+## Zero-Subscription Traffic Sources
 
-Use mock traffic for offline/local testing:
+MARIA does not require a paid service, paid subscription, commercial aircraft
+API, cloud data provider, OpenSky account, OAuth token, or internet connection.
+The required live path is:
 
-```bash
-TRAFFIC_SOURCE=mock
+```text
+RTL-SDR + ADS-B antenna
+-> readsb or dump1090
+-> local aircraft.json
+-> MARIA backend
+-> MARIA web radar and M5Stack Core2
 ```
 
-Use OpenSky when credentials/network are available:
+Before SDR hardware is available, use the deterministic local receiver
+simulator or normal simulation fallback:
 
 ```bash
-TRAFFIC_SOURCE=opensky
-OPENSKY_USERNAME=...
-OPENSKY_PASSWORD=...
+LOCAL_ADSB_SIMULATOR=true MARIA_SIMULATION_FALLBACK=true
 ```
 
-The frontend reads the same normalized traffic shape either way.
+OpenSky is optional, disabled by default, and terms-dependent. MARIA never sends
+aircraft or location data to OpenSky or any external aircraft-data provider by
+default.
 
 ## Optional future extensions
 

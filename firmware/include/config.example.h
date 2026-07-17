@@ -25,6 +25,7 @@
 
 // Captive portal and Arduino OTA credentials (use strong unique values).
 #define CONFIG_PORTAL_SSID "MARIA-Radar-Setup"
+#define CONFIG_PORTAL_HOSTNAME "maria-radar"
 #define CONFIG_PORTAL_PASSWORD "maria-setup"
 #define OTA_PASSWORD ""
 

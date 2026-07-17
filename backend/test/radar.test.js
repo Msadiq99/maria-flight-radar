@@ -11,6 +11,7 @@ import {
   normalizeLocalAdsbTrack,
   normalizeOpenSkyTrack,
   parseRadarQuery,
+  simulatedLocalAdsbAircraftJson,
   toDevicePayload,
 } from '../src/radar.js';
 
@@ -107,7 +108,7 @@ test('deduplicates tracks with local ADS-B priority', () => {
   const local = { ...base, callsign: 'ADSB', source: 'local_adsb' };
   const merged = mergeTracks(
     [[base], [local]],
-    ['local_adsb', 'opensky', 'simulation']
+    ['local_adsb', 'simulation', 'opensky']
   );
   assert.equal(merged.length, 1);
   assert.equal(merged[0].source, 'local_adsb');
@@ -136,4 +137,59 @@ test('aggregator falls back to deterministic simulation and caps device payload'
     payload.sources.some((source) => source.id === 'simulation'),
     true
   );
+});
+
+test('auto mode uses local ADS-B and does not contact OpenSky by default', async () => {
+  let openSkyCalls = 0;
+  const service = new HybridRadarService({
+    env: {
+      MARIA_SOURCE_MODE: 'auto',
+      MARIA_SOURCE_PRIORITY: 'local_adsb,simulation',
+      MARIA_SIMULATION_FALLBACK: 'true',
+      OPENSKY_ENABLED: 'false',
+    },
+    openSkyClient: {
+      fetchTracks: async () => {
+        openSkyCalls += 1;
+        return { tracks: [], health: { source: 'opensky' } };
+      },
+    },
+    localAdsbClient: new LocalAdsbClient({
+      simulator: true,
+    }),
+  });
+
+  const snapshot = await service.snapshot({
+    lat: '24.7136',
+    lon: '46.6753',
+    rangeKm: '100',
+  });
+
+  assert.equal(openSkyCalls, 0);
+  assert.equal(snapshot.effectiveSources[0], 'local_adsb');
+  assert.ok(snapshot.aircraft.length > 0);
+});
+
+test('local ADS-B client uses a recent cached snapshot during interruption', async () => {
+  let online = true;
+  const client = new LocalAdsbClient({
+    enabled: true,
+    cacheMaxAgeSeconds: 60,
+    fetchImpl: async () => {
+      if (!online) {
+        throw Object.assign(new Error('receiver offline'), { code: 'offline' });
+      }
+      return Response.json(
+        simulatedLocalAdsbAircraftJson({ center, rangeKm: 100 }, 2)
+      );
+    },
+  });
+
+  const first = await client.fetchTracks({ center, rangeKm: 100 });
+  online = false;
+  const second = await client.fetchTracks({ center, rangeKm: 100 });
+
+  assert.equal(first.health.status, 'healthy');
+  assert.equal(second.health.status, 'degraded');
+  assert.equal(second.tracks.length, 2);
 });

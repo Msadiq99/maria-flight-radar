@@ -323,25 +323,32 @@ export function normalizeOpenSkyTrack(state, index, responseTime, center) {
 export class LocalAdsbClient {
   constructor(config = {}) {
     this.enabled = config.enabled ?? false;
+    this.simulator = config.simulator ?? false;
     this.baseUrl = config.baseUrl || 'http://localhost:8080';
     this.aircraftPath = config.aircraftPath || '/data/aircraft.json';
     this.timeoutMs = config.timeoutMs || 3000;
     this.maxAgeSeconds = config.maxAgeSeconds || 30;
+    this.cacheMaxAgeSeconds = config.cacheMaxAgeSeconds || 60;
     this.fixture = config.fixture;
     this.fetchImpl = config.fetchImpl || fetch;
+    this.lastGood = null;
   }
 
   async fetchTracks(query) {
     const started = performance.now();
     const lastAttemptAt = nowIso();
-    if (!this.enabled && !this.fixture) {
+    if (!this.enabled && !this.fixture && !this.simulator) {
       return {
         tracks: [],
         health: health('local_adsb', false, 'unconfigured'),
       };
     }
     try {
-      const data = this.fixture || (await this.fetchJson());
+      const data =
+        this.fixture ||
+        (this.simulator
+          ? simulatedLocalAdsbAircraftJson(query)
+          : await this.fetchJson());
       const now = new Date();
       const tracks = (Array.isArray(data.aircraft) ? data.aircraft : [])
         .map((item) => normalizeLocalAdsbTrack(item, now, query.center))
@@ -349,6 +356,7 @@ export class LocalAdsbClient {
         .filter(
           (track) => (track.quality?.ageSeconds ?? 0) <= this.maxAgeSeconds
         );
+      this.lastGood = { tracks, time: Date.now() };
       return {
         tracks,
         health: health('local_adsb', true, 'healthy', {
@@ -359,6 +367,20 @@ export class LocalAdsbClient {
         }),
       };
     } catch (error) {
+      const cached = this.cachedTracks();
+      if (cached) {
+        return {
+          tracks: cached.tracks,
+          health: health('local_adsb', true, 'degraded', {
+            lastAttemptAt,
+            lastSuccessAt: new Date(cached.time).toISOString(),
+            latencyMs: Math.round(performance.now() - started),
+            aircraftCount: cached.tracks.length,
+            errorCode: error.code || 'local_adsb_error',
+            message: 'using recent cached local ADS-B snapshot',
+          }),
+        };
+      }
       return {
         tracks: [],
         health: health('local_adsb', true, 'offline', {
@@ -369,6 +391,12 @@ export class LocalAdsbClient {
         }),
       };
     }
+  }
+
+  cachedTracks() {
+    if (!this.lastGood) return null;
+    const ageSeconds = (Date.now() - this.lastGood.time) / 1000;
+    return ageSeconds <= this.cacheMaxAgeSeconds ? this.lastGood : null;
   }
 
   async fetchJson() {
@@ -383,6 +411,35 @@ export class LocalAdsbClient {
     }
     return response.json();
   }
+}
+
+export function simulatedLocalAdsbAircraftJson(query, count = 8) {
+  return {
+    now: Math.floor(Date.now() / 1000),
+    messages: count,
+    aircraft: simulationTracks(query, count).map((track, index) => ({
+      hex: track.icao24,
+      flight: track.callsign,
+      lat: track.latitude,
+      lon: track.longitude,
+      alt_baro:
+        track.altitudeMeters === null
+          ? undefined
+          : Math.round(track.altitudeMeters / METERS_PER_FOOT),
+      gs:
+        track.groundSpeedMps === null
+          ? undefined
+          : Number((track.groundSpeedMps / MPS_PER_KNOT).toFixed(1)),
+      track: track.headingDegrees,
+      baro_rate:
+        track.verticalRateMps === null
+          ? undefined
+          : Math.round((track.verticalRateMps * 60) / METERS_PER_FOOT),
+      category: 'simulator',
+      seen: index,
+      seen_pos: index,
+    })),
+  };
 }
 
 export function normalizeLocalAdsbTrack(item, receivedAtDate, center) {
@@ -508,7 +565,7 @@ export function simulationTracks(query, count = 8) {
 
 export function mergeTracks(
   groups,
-  sourcePriority = ['local_adsb', 'opensky', 'simulation']
+  sourcePriority = ['local_adsb', 'simulation']
 ) {
   const byIcao = new Map();
   for (const track of groups.flat()) {
@@ -552,7 +609,7 @@ export class HybridRadarService {
   }
 
   priority() {
-    return (this.env.MARIA_SOURCE_PRIORITY || 'local_adsb,opensky,simulation')
+    return (this.env.MARIA_SOURCE_PRIORITY || 'local_adsb,simulation')
       .split(',')
       .map((value) => value.trim())
       .filter((value) => VALID_SOURCES.has(value));
@@ -565,8 +622,10 @@ export class HybridRadarService {
   async snapshot(rawQuery = {}) {
     const query = parseRadarQuery(rawQuery, this.env);
     const key = this.cacheKey(query);
-    const ttlMs =
-      Math.max(1, Number(this.env.OPENSKY_CACHE_TTL_SECONDS) || 10) * 1000;
+    const ttlMs = Math.max(
+      1,
+      Number(this.env.MARIA_RADAR_CACHE_TTL_SECONDS) || 10_000
+    );
     const cached = this.cache.get(key);
     if (cached && Date.now() - cached.time < ttlMs) return cached.snapshot;
     if (this.inflight.has(key)) return this.inflight.get(key);
@@ -596,7 +655,8 @@ export class HybridRadarService {
       const wantsLocal =
         mode === 'auto' || mode === 'hybrid' || mode === 'local_adsb';
       const wantsOpenSky =
-        mode === 'auto' || mode === 'hybrid' || mode === 'opensky';
+        mode === 'opensky' ||
+        (mode === 'hybrid' && this.env.OPENSKY_ENABLED === 'true');
       if (wantsLocal && this.localAdsbClient) {
         sourceResults.push(await this.localAdsbClient.fetchTracks(query));
       }
@@ -647,7 +707,7 @@ export class HybridRadarService {
       stale,
       nextRefreshSeconds: Math.max(
         10,
-        Number(this.env.OPENSKY_MIN_REQUEST_INTERVAL_SECONDS) || 10
+        Number(this.env.MARIA_RADAR_MIN_REFRESH_SECONDS) || 10
       ),
     };
   }
@@ -739,10 +799,12 @@ export function createRadarService(env = process.env, fetchImpl = fetch) {
     }),
     localAdsbClient: new LocalAdsbClient({
       enabled: env.LOCAL_ADSB_ENABLED === 'true',
+      simulator: env.LOCAL_ADSB_SIMULATOR === 'true',
       baseUrl: env.LOCAL_ADSB_BASE_URL || 'http://localhost:8080',
       aircraftPath: env.LOCAL_ADSB_AIRCRAFT_PATH || '/data/aircraft.json',
       timeoutMs: Number(env.LOCAL_ADSB_TIMEOUT_MS) || 3000,
       maxAgeSeconds: Number(env.LOCAL_ADSB_MAX_AGE_SECONDS) || 30,
+      cacheMaxAgeSeconds: Number(env.LOCAL_ADSB_CACHE_MAX_AGE_SECONDS) || 60,
       fetchImpl,
     }),
   });

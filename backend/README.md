@@ -25,16 +25,29 @@ Environment variables:
   matching SHA-256 HMAC in `X-Telemetry-Signature`
 - `MARIA_SOURCE_MODE` — `auto` by default; also supports `hybrid`, `opensky`,
   `local_adsb`, and `simulation`
+- `MARIA_SOURCE_PRIORITY` — default `local_adsb,simulation`; keep OpenSky out
+  unless it is explicitly enabled for a deployment
+- `MARIA_SIMULATION_FALLBACK` — default `true`; keeps MARIA functional without
+  receiver hardware, internet access, or aircraft-data credentials
 - `MARIA_RADAR_LATITUDE` / `MARIA_RADAR_LONGITUDE` — optional default radar
   center for clients that omit a location
 - `MARIA_DEFAULT_RANGE_KM` / `MARIA_MAX_RANGE_KM` — default and maximum radar
   query ranges
-- `OPENSKY_ENABLED` — set `true` to enable server-side OpenSky integration
+- `LOCAL_ADSB_ENABLED` — set `true` to enable a local readsb/dump1090 receiver
+- `LOCAL_ADSB_BASE_URL` / `LOCAL_ADSB_AIRCRAFT_PATH` — defaults to
+  `http://localhost:8080` and `/data/aircraft.json`
+- `LOCAL_ADSB_SIMULATOR` — set `true` for deterministic local ADS-B-shaped
+  development data before SDR hardware is available
+- `OPENSKY_ENABLED` — default `false`; set `true` only for explicitly approved
+  optional OpenSky deployments
 - `OPENSKY_CLIENT_ID` / `OPENSKY_CLIENT_SECRET` — OpenSky OAuth2 client
   credentials; never expose these to the web app or firmware
 - `OPENSKY_TOKEN_URL` / `OPENSKY_BASE_URL` — optional OpenSky endpoint overrides
-- `LOCAL_ADSB_ENABLED` — set `true` to enable a local readsb/dump1090 receiver
-- `LOCAL_ADSB_AIRCRAFT_URL` — URL for receiver `aircraft.json`
+
+MARIA is fully functional without OpenSky, OAuth tokens, internet access, or
+any paid/recurring aircraft-data service. Auto mode uses local ADS-B first,
+briefly reuses a recent cached local snapshot during interruptions, and then
+falls back to deterministic simulation. It does not contact OpenSky by default.
 
 ## Endpoints
 
@@ -69,8 +82,9 @@ Environment variables:
 Telemetry and traffic snapshots are stored in SQLite using WAL mode. The schema
 is migrated automatically and expired rows are pruned hourly. Radar snapshots
 are cached briefly by source mode, area, and range; concurrent matching requests
-share one upstream refresh. OpenSky OAuth2 tokens are cached in backend memory
-and refreshed server-side. API routes also have lightweight per-IP rate limits.
+share one refresh. Local ADS-B snapshots are cached for short receiver
+interruptions. OpenSky OAuth2 tokens are cached only when optional OpenSky is
+explicitly enabled. API routes also have lightweight per-IP rate limits.
 Request logs are emitted as JSON and responses include an `X-Request-ID`.
 Device sequence numbers are uniquely indexed, making firmware retries
 idempotent when an acknowledgement is lost in transit.

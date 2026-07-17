@@ -42,7 +42,7 @@ const SOURCE_MODES: HybridSource[] = [
 const SOURCE_LABELS: Record<HybridSource, string> = {
   auto: 'Auto',
   hybrid: 'Hybrid',
-  opensky: 'OpenSky',
+  opensky: 'OpenSky (optional)',
   local_adsb: 'Local ADS-B',
   simulation: 'Simulation',
 };

@@ -1,13 +1,32 @@
 # MARIA Local ADS-B Receiver
 
-MARIA can read a local receiver that exposes readsb or dump1090-compatible
-`aircraft.json`.
+MARIA's required live aircraft source is a local receiver that exposes readsb or
+dump1090-compatible `aircraft.json`. No paid service, cloud aircraft-data
+provider, OpenSky account, OAuth token, or internet connection is required.
+
+```text
+RTL-SDR + ADS-B antenna
+-> readsb or dump1090
+-> local aircraft.json
+-> MARIA backend
+-> MARIA web radar and M5Stack Core2
+```
 
 Example backend configuration:
 
 ```env
 LOCAL_ADSB_ENABLED=true
-LOCAL_ADSB_AIRCRAFT_URL=http://127.0.0.1/tar1090/data/aircraft.json
+LOCAL_ADSB_BASE_URL=http://localhost:8080
+LOCAL_ADSB_AIRCRAFT_PATH=/data/aircraft.json
+MARIA_SOURCE_PRIORITY=local_adsb,simulation
+MARIA_SIMULATION_FALLBACK=true
+```
+
+Before SDR hardware is available, enable deterministic local ADS-B-shaped
+development data:
+
+```env
+LOCAL_ADSB_SIMULATOR=true
 ```
 
 Supported fields include ICAO, callsign, latitude, longitude, barometric or
