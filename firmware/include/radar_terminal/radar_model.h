@@ -55,6 +55,7 @@ struct Aircraft {
   char origin[8] = "";
   char destination[8] = "";
   char squawk[8] = "";
+  char source[12] = "";
   double lat = 0;
   double lon = 0;
   float altitudeMeters = 0;
