@@ -3,6 +3,11 @@ import express from 'express';
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import {
+  createRadarService,
+  toDevicePayload,
+  toLegacyTraffic,
+} from './radar.js';
 import { createStore } from './store.js';
 
 const PORT = process.env.PORT || 8080;
@@ -28,6 +33,7 @@ if (!API_KEY) {
 }
 
 const store = createStore(DB_PATH, RETENTION_DAYS);
+const radarService = createRadarService();
 store.prune();
 setInterval(() => store.prune(), 60 * 60 * 1000).unref();
 const trafficCache = new Map();
@@ -562,6 +568,33 @@ app.get('/api/traffic/nearby', rateLimit(60, 60_000), async (req, res) => {
       .json({ error: 'valid lat and lon query params required' });
   }
 
+  try {
+    const snapshot = await radarService.snapshot({
+      lat,
+      lon,
+      rangeKm: radiusKm,
+      mode: req.query.mode || 'auto',
+    });
+    const feed = toLegacyTraffic(snapshot);
+    store.saveTraffic({
+      ...feed,
+      center: { lat, lon },
+      radius_km: radiusKm,
+    });
+    res.set('Cache-Control', 'no-store');
+    return res.json(feed);
+  } catch (error) {
+    metrics.openSkyFailures += 1;
+    console.warn(
+      JSON.stringify({
+        level: 'warn',
+        event: 'hybrid_traffic_fallback',
+        request_id: req.requestId,
+        error: error.message,
+      })
+    );
+  }
+
   if (TRAFFIC_SOURCE === 'opensky') {
     try {
       const cacheKey = `${lat.toFixed(2)}:${lon.toFixed(2)}:${Math.round(radiusKm / 5) * 5}`;
@@ -609,6 +642,73 @@ app.get('/api/traffic/nearby', rateLimit(60, 60_000), async (req, res) => {
   res.json(feed);
 });
 
+app.get('/api/radar/snapshot', rateLimit(60, 60_000), async (req, res) => {
+  try {
+    const snapshot = await radarService.snapshot(req.query);
+    res.set('Cache-Control', 'no-store');
+    res.json(snapshot);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.get('/api/radar/sources', (_req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ sources: radarService.sources() });
+});
+
+app.get('/api/radar/aircraft/:icao24', async (req, res) => {
+  try {
+    const snapshot = await radarService.snapshot(req.query);
+    const id = String(req.params.icao24).toLowerCase();
+    const aircraft = snapshot.aircraft.find(
+      (track) => track.icao24 === id || track.id === id
+    );
+    if (!aircraft) return res.status(404).json({ error: 'aircraft not found' });
+    res.set('Cache-Control', 'no-store');
+    res.json(aircraft);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.get(
+  '/api/devices/core2/radar',
+  rateLimit(120, 60_000),
+  async (req, res) => {
+    try {
+      const snapshot = await radarService.snapshot(req.query);
+      res.set('Cache-Control', 'no-store');
+      res.json(toDevicePayload(snapshot));
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+);
+
+app.post('/api/radar/config/validate', (req, res) => {
+  try {
+    const lat = toNumber(req.body?.lat, null);
+    const lon = toNumber(req.body?.lon, null);
+    const rangeKm = toNumber(req.body?.rangeKm, 100);
+    const mode = req.body?.mode || 'auto';
+    if (!inRange(lat, -90, 90) || !inRange(lon, -180, 180)) {
+      return res.status(400).json({ error: 'valid lat/lon required' });
+    }
+    if (!inRange(rangeKm, 1, 250)) {
+      return res.status(400).json({ error: 'valid rangeKm required' });
+    }
+    if (
+      !['auto', 'hybrid', 'opensky', 'local_adsb', 'simulation'].includes(mode)
+    ) {
+      return res.status(400).json({ error: 'valid mode required' });
+    }
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 app.get('/health', (_req, res) => {
   try {
     const database = store.ping();
@@ -616,6 +716,13 @@ app.get('/health', (_req, res) => {
       ok: database,
       database,
       traffic_source: TRAFFIC_SOURCE,
+      radar: {
+        sources: radarService.sources().map((source) => ({
+          source: source.source,
+          enabled: source.enabled,
+          status: source.status,
+        })),
+      },
       storage: store.stats(),
       uptime_seconds: Math.floor(process.uptime()),
     });
@@ -662,4 +769,10 @@ if (
   });
 }
 
-export { app, isValidTelemetry, isValidTelemetrySignature, store };
+export {
+  app,
+  isValidTelemetry,
+  isValidTelemetrySignature,
+  radarService,
+  store,
+};
