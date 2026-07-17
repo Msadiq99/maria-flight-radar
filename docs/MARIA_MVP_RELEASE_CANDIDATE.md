@@ -118,6 +118,27 @@ Automated and API-level verification from this RC pass:
 - Core2 normal firmware built successfully.
 - Core2 upload succeeded on `/dev/cu.usbserial-537A0079331`.
 - Detected Core2 upload chip: `ESP32-D0WDQ6-V3 (revision v3.0)`.
+- Normal-runtime observability fix committed as `211df5a`.
+
+## Core2 Runtime Evidence
+
+- Firmware environment: `maria-m5stack-core2`.
+- Serial port: `/dev/cu.usbserial-537A0079331`.
+- Upload result: successful; bootloader, partition table, and application
+  hashes verified.
+- Chip: `ESP32-D0WDQ6-V3`, revision `v3.0`.
+- Serial-log result: PlatformIO monitor could not allocate a macOS TTY
+  (`termios: Operation not supported by device`); a direct 30-second serial
+  capture after reset received no bytes.
+- Visible screen result: not captured by the software environment; physical
+  confirmation is still required.
+- Runtime mode: not established. The new firmware is designed to show `SETUP`
+  when Wi-Fi is unconfigured and `DEMO` fallback when live transport is
+  unavailable.
+- Aircraft count: not physically observed. Deterministic fallback is four
+  targets; the backend simulator previously provided eight targets.
+- Remaining hardware checks: confirm a nonblank boot/radar or setup screen,
+  stable runtime without reboot loops, and optionally live backend transition.
 
 Real hardware verified in this pass:
 
@@ -131,8 +152,8 @@ Visually confirmed:
 
 ## Pending
 
-- Core2 runtime boot logs were not received from the serial monitor after the
-  successful normal-firmware upload.
+- Core2 runtime boot logs were not received after the successful normal-firmware
+  upload, and the physical screen has not yet been confirmed.
 - Core2 display, touch, Wi-Fi association, backend polling, and radar rendering
   still require physical confirmation on the device.
 - Full browser visual automation was not available because the offline
@@ -168,8 +189,8 @@ and licensing requirements, and is not described as guaranteed free.
 ## Known Limitations
 
 - The current RC cannot claim Core2 runtime success until boot logs or physical
-  device behavior confirm that normal firmware starts, joins Wi-Fi, reaches the
-  backend, and renders radar data.
+  device behavior confirm that normal firmware starts and renders a nonblank
+  setup, fallback, or live radar state.
 - The current RC cannot claim browser pixel-level verification because Playwright
   installation was blocked by offline package resolution.
 - The upload log reported a non-fatal crystal-frequency warning during esptool
