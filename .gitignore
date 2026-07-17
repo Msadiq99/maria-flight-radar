@@ -15,6 +15,11 @@ backend/data/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+*.token
+*.secret
+opensky-token*.json
+adsb-fixture-private*.json
+receiver-location*.json
 
 # PlatformIO / firmware
 firmware/.pio

@@ -193,6 +193,20 @@ settings. Backend URL, API key, polling behavior, brightness, demo mode, sound,
 touch, and SD behavior are controlled by existing configuration and build flags.
 No secrets are hardcoded in the Core2 profile.
 
+When credentials are missing or the device remains disconnected, the Core2
+starts the `MARIA-Radar-Setup` captive portal at `192.168.4.1`. The portal
+password is configured with `CONFIG_PORTAL_PASSWORD` in `config.h`.
+
+Normal live-radar mode now requests the compact backend payload:
+
+```text
+/api/devices/core2/radar?lat=<gps-lat>&lon=<gps-lon>&rangeKm=<range>&mode=auto
+```
+
+The firmware still accepts the legacy nearby traffic shape for compatibility,
+but the compact payload is preferred for hybrid OpenSky, local ADS-B, and
+simulation source metadata.
+
 ## Offline Demo
 
 The Core2 target supports `MARIA_FORCE_DEMO_MODE`. The initial Core2
