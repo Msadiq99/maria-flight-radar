@@ -1,4 +1,5 @@
-#ifdef MARIA_ESP32_28_RADAR_TERMINAL
+#if defined(MARIA_ESP32_28_RADAR_TERMINAL) || \
+    defined(MARIA_M5STACK_CORE2_RADAR_TERMINAL)
 
 #include "radar_terminal/traffic_client.h"
 
@@ -26,6 +27,13 @@ void TrafficClient::poll(bool wifiConnected, const GpsFix &fix,
   if (!fix.valid) {
     return;
   }
+#if MARIA_FORCE_DEMO_MODE
+  loadDemo(fix, nowMs);
+  lastSuccessMs_ = nowMs;
+  lastHttpStatus_ = 200;
+  nextAttemptMs_ = nowMs + 3000;
+  return;
+#endif
   if (!wifiConnected) {
     return;
   }

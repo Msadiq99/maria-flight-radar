@@ -36,6 +36,17 @@ enum class VerticalState : uint8_t {
   Unknown,
 };
 
+enum class TerminalTouchAction : uint8_t {
+  None,
+  Previous,
+  Next,
+  Range,
+  Pause,
+  Details,
+  Status,
+  Settings,
+};
+
 struct Aircraft {
   char id[16] = "";
   char callsign[16] = "";
@@ -66,6 +77,12 @@ struct ScreenPoint {
   bool visible = false;
 };
 
+struct RadarScreenGeometry {
+  int16_t centerX = 0;
+  int16_t centerY = 0;
+  int16_t radius = 0;
+};
+
 struct AlertThresholds {
   float criticalKm = 5;
   float warningKm = 15;
@@ -93,6 +110,9 @@ float distanceKm(double fromLat, double fromLon, double toLat, double toLon);
 float bearingDeg(double fromLat, double fromLon, double toLat, double toLon);
 ScreenPoint projectTarget(float bearingDeg, float distanceKm, uint16_t rangeKm,
                           int16_t centerX, int16_t centerY, int16_t radius);
+RadarScreenGeometry radarGeometry(uint16_t width, uint16_t height);
+TerminalTouchAction terminalTouchActionAt(int16_t x, int16_t y, uint16_t width,
+                                          uint16_t height);
 bool altitudeMatches(const Aircraft &aircraft, AltitudeFilter filter);
 AlertZone classifyAlertZone(float distanceKm, const AlertThresholds &thresholds);
 Freshness freshness(uint32_t updatedAtMs, uint32_t nowMs);

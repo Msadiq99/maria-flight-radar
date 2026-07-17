@@ -59,6 +59,35 @@ ScreenPoint projectTarget(float bearing, float distance, uint16_t rangeKm,
   return point;
 }
 
+RadarScreenGeometry radarGeometry(uint16_t width, uint16_t height) {
+  RadarScreenGeometry geometry{};
+  geometry.centerX = static_cast<int16_t>(width / 2 - 34);
+  geometry.centerY = static_cast<int16_t>(height / 2 - 4);
+  const int16_t horizontalLimit = static_cast<int16_t>(geometry.centerX - 36);
+  const int16_t verticalLimit = static_cast<int16_t>(height - 154);
+  geometry.radius = horizontalLimit < verticalLimit ? horizontalLimit : verticalLimit;
+  if (geometry.radius < 48) geometry.radius = 48;
+  return geometry;
+}
+
+TerminalTouchAction terminalTouchActionAt(int16_t x, int16_t y, uint16_t width,
+                                          uint16_t height) {
+  if (x < 0 || y < 0 || x >= width || y >= height) {
+    return TerminalTouchAction::None;
+  }
+  if (y >= height - 38) {
+    const int16_t bucket = static_cast<int16_t>((x * 5) / width);
+    if (bucket == 0) return TerminalTouchAction::Previous;
+    if (bucket == 1) return TerminalTouchAction::Next;
+    if (bucket == 2) return TerminalTouchAction::Range;
+    if (bucket == 3) return TerminalTouchAction::Pause;
+    return TerminalTouchAction::Details;
+  }
+  if (y < 34 && x > width - 66) return TerminalTouchAction::Settings;
+  if (y < 34 && x > width - 118) return TerminalTouchAction::Status;
+  return TerminalTouchAction::Details;
+}
+
 bool altitudeMatches(const Aircraft &aircraft, AltitudeFilter filter) {
   if (filter == AltitudeFilter::All) return true;
   if (!aircraft.altitudeValid || !isfinite(aircraft.altitudeMeters) ||

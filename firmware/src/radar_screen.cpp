@@ -1,15 +1,23 @@
-#ifdef MARIA_ESP32_28_RADAR_TERMINAL
+#if defined(MARIA_ESP32_28_RADAR_TERMINAL) || \
+    defined(MARIA_M5STACK_CORE2_RADAR_TERMINAL)
 
 #include "radar_terminal/radar_screen.h"
 
+#if defined(MARIA_M5STACK_CORE2_RADAR_TERMINAL)
+#include <M5Unified.h>
+#include "board_profiles/m5stack_core2.h"
+#define tft M5.Display
+#else
 #include <TFT_eSPI.h>
-
 #include "board_profiles/esp32_2432s028r.h"
+#endif
 
 namespace MariaRadar {
 
 namespace {
+#if defined(MARIA_ESP32_28_RADAR_TERMINAL)
 TFT_eSPI tft;
+#endif
 constexpr uint16_t kBg = TFT_BLACK;
 constexpr uint16_t kPanel = 0x0861;
 constexpr uint16_t kCyan = 0x07ff;
@@ -17,9 +25,6 @@ constexpr uint16_t kGreen = 0x07e0;
 constexpr uint16_t kAmber = 0xffc0;
 constexpr uint16_t kRed = 0xf800;
 constexpr uint16_t kWhite = TFT_WHITE;
-constexpr int16_t kCenterX = 126;
-constexpr int16_t kCenterY = 116;
-constexpr int16_t kRadius = 86;
 
 uint16_t zoneColor(AlertZone zone) {
   if (zone == AlertZone::Critical) return kRed;
@@ -78,9 +83,14 @@ const char *alertZoneLabel(AlertZone zone) {
 }
 
 void RadarScreen::begin() {
+#if defined(MARIA_M5STACK_CORE2_RADAR_TERMINAL)
+  MariaBoard::begin();
+#else
   pinMode(MariaBoard::kBacklightPin, OUTPUT);
   digitalWrite(MariaBoard::kBacklightPin, MariaBoard::kBacklightActiveLevel);
   tft.init();
+#endif
+  MariaBoard::setBrightness(180);
   tft.setRotation(MariaBoard::kLandscapeRotation);
   tft.fillScreen(kBg);
   tft.setTextFont(2);
@@ -129,28 +139,35 @@ void RadarScreen::drawRadar(const RadarPreferences &preferences,
   tft.drawString("STAT", 214, 4);
   tft.drawString("SET", 268, 4);
 
-  tft.drawCircle(kCenterX, kCenterY, kRadius, kCyan);
-  tft.drawCircle(kCenterX, kCenterY, kRadius / 2, 0x03ef);
-  tft.drawCircle(kCenterX, kCenterY, kRadius / 4, 0x03ef);
-  tft.drawFastHLine(kCenterX - kRadius, kCenterY, kRadius * 2, 0x03ef);
-  tft.drawFastVLine(kCenterX, kCenterY - kRadius, kRadius * 2, 0x03ef);
-  tft.drawString("N", kCenterX - 4, kCenterY - kRadius - 16);
+  const RadarScreenGeometry geometry =
+      radarGeometry(MariaBoard::kDisplayWidth, MariaBoard::kDisplayHeight);
+  tft.drawCircle(geometry.centerX, geometry.centerY, geometry.radius, kCyan);
+  tft.drawCircle(geometry.centerX, geometry.centerY, geometry.radius / 2,
+                 0x03ef);
+  tft.drawCircle(geometry.centerX, geometry.centerY, geometry.radius / 4,
+                 0x03ef);
+  tft.drawFastHLine(geometry.centerX - geometry.radius, geometry.centerY,
+                    geometry.radius * 2, 0x03ef);
+  tft.drawFastVLine(geometry.centerX, geometry.centerY - geometry.radius,
+                    geometry.radius * 2, 0x03ef);
+  tft.drawString("N", geometry.centerX - 4,
+                 geometry.centerY - geometry.radius - 16);
 
   if (!preferences.sweepPaused) {
     const float sweep = (nowMs % 4000) * 0.09f;
-    ScreenPoint tip =
-        projectTarget(sweep, preferences.rangeKm, preferences.rangeKm, kCenterX,
-                      kCenterY, kRadius);
-    tft.drawLine(kCenterX, kCenterY, tip.x, tip.y, 0x07e0);
+    ScreenPoint tip = projectTarget(sweep, preferences.rangeKm,
+                                    preferences.rangeKm, geometry.centerX,
+                                    geometry.centerY, geometry.radius);
+    tft.drawLine(geometry.centerX, geometry.centerY, tip.x, tip.y, 0x07e0);
   }
 
   uint8_t labels = 0;
   for (uint8_t i = 0; i < count; i++) {
     const Aircraft &target = aircraft[i];
     if (!altitudeMatches(target, preferences.altitudeFilter)) continue;
-    ScreenPoint p = projectTarget(target.bearingDeg, target.distanceKm,
-                                  preferences.rangeKm, kCenterX, kCenterY,
-                                  kRadius);
+    ScreenPoint p =
+        projectTarget(target.bearingDeg, target.distanceKm, preferences.rangeKm,
+                      geometry.centerX, geometry.centerY, geometry.radius);
     if (!p.visible) continue;
     AlertZone zone = classifyAlertZone(target.distanceKm, preferences.alertZones);
     uint16_t color = zoneColor(zone);
@@ -270,5 +287,9 @@ void RadarScreen::drawSettings(const RadarPreferences &preferences) {
 }
 
 }  // namespace MariaRadar
+
+#if defined(MARIA_M5STACK_CORE2_RADAR_TERMINAL)
+#undef tft
+#endif
 
 #endif
