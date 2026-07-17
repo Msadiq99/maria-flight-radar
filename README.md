@@ -29,6 +29,12 @@ React/Leaflet web dashboard.
 - CSV and GeoJSON exports plus shareable monitoring URLs
 - Installable PWA shell with offline caching
 
+## MARIA MVP Quick Start
+
+For the zero-subscription MVP startup sequence, validation status, and Core2
+release-candidate notes, see
+[docs/MARIA_MVP_RELEASE_CANDIDATE.md](docs/MARIA_MVP_RELEASE_CANDIDATE.md).
+
 ## Local development
 
 Backend:
