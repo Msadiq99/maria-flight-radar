@@ -1,15 +1,24 @@
 {
   "name": "maria-flight-radar-backend",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0-alpha.0",
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
-    "test": "DB_PATH=:memory: node --test"
+    "dev": "node src/server.js",
+    "test": "DB_PATH=:memory: node --test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint ."
   },
   "dependencies": {
     "better-sqlite3": "^11.10.0",
     "cors": "^2.8.6",
     "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "eslint": "^10.6.0",
+    "eslint-plugin-node": "^11.1.0",
+    "prettier": "^3.9.4"
   }
 }

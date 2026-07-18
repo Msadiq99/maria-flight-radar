@@ -1,0 +1,33 @@
+name: Firmware board request
+description: Request evaluation of a new board; requests do not guarantee support
+title: '[Board]: '
+labels: [firmware, board-request]
+body:
+  - type: textarea
+    id: board
+    attributes: { label: Board name, ESP32 variant, and PlatformIO board ID }
+    validations: { required: true }
+  - type: textarea
+    id: hardware
+    attributes:
+      {
+        label: Display controller/resolution,
+        touch controller,
+        flash/PSRAM,
+        and pin map,
+      }
+    validations: { required: true }
+  - type: input
+    id: datasheet
+    attributes: { label: Official datasheet URL }
+  - type: textarea
+    id: evidence
+    attributes:
+      {
+        label: Board markings,
+        photographs availability,
+        and whether the owner can test,
+      }
+  - type: input
+    id: environment
+    attributes: { label: Proposed PlatformIO environment name }

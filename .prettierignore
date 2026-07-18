@@ -1,0 +1,11 @@
+# Ignore artifacts:
+dist
+node_modules
+
+# Ignore lockfiles:
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Ignore firmware build files
+firmware/.pio

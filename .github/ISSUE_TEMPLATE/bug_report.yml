@@ -1,0 +1,40 @@
+name: Bug report
+description: Report a reproducible MARIA problem
+title: '[Bug]: '
+labels: [bug]
+body:
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected component
+      options: [Web, Backend, Local ADS-B, Firmware, Documentation]
+    validations: { required: true }
+  - type: input
+    id: version
+    attributes: { label: Version or commit }
+    validations: { required: true }
+  - type: input
+    id: environment
+    attributes: { label: Operating system and browser }
+  - type: dropdown
+    id: source
+    attributes:
+      label: Source mode
+      options: [LIVE, CACHE, DEMO, OFFLINE]
+  - type: textarea
+    id: steps
+    attributes: { label: Reproduction steps }
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes: { label: Expected result }
+  - type: textarea
+    id: actual
+    attributes: { label: Actual result, redacted logs, and screenshots }
+  - type: checkboxes
+    id: security
+    attributes:
+      label: Security confirmation
+      options:
+        - label: I removed secrets, private coordinates, and personal data.
+          required: true

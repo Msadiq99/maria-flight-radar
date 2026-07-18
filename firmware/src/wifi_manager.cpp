@@ -10,6 +10,14 @@
 #define CONFIG_PORTAL_PASSWORD "maria-setup"
 #endif
 
+#ifndef CONFIG_PORTAL_SSID
+#define CONFIG_PORTAL_SSID "MARIA-Radar-Setup"
+#endif
+
+#ifndef CONFIG_PORTAL_HOSTNAME
+#define CONFIG_PORTAL_HOSTNAME "maria-radar"
+#endif
+
 #ifndef OTA_PASSWORD
 #define OTA_PASSWORD ""
 #endif
@@ -17,6 +25,7 @@
 void WifiManager::begin(const char *ssid, const char *password) {
   ssid_ = ssid;
   password_ = password;
+  WiFi.setHostname(CONFIG_PORTAL_HOSTNAME);
   WiFi.mode(WIFI_STA);
   disconnectedSinceMs_ = millis();
   if (ssid_ == nullptr || strlen(ssid_) == 0 ||
@@ -42,7 +51,7 @@ void WifiManager::poll() {
       timeConfigured_ = true;
     }
     if (!otaStarted_) {
-      ArduinoOTA.setHostname(DEVICE_ID);
+      ArduinoOTA.setHostname(CONFIG_PORTAL_HOSTNAME);
       if (strlen(OTA_PASSWORD) > 0) {
         ArduinoOTA.setPassword(OTA_PASSWORD);
       }
@@ -87,6 +96,9 @@ void WifiManager::startProvisioning() {
   portal_ = new WiFiManager();
   portal_->setConfigPortalBlocking(false);
   portal_->setConfigPortalTimeout(180);
-  portal_->autoConnect("MARIA-Setup", CONFIG_PORTAL_PASSWORD);
-  Serial.println("[wifi] provisioning portal available at 192.168.4.1");
+  portal_->setHostname(CONFIG_PORTAL_HOSTNAME);
+  portal_->autoConnect(CONFIG_PORTAL_SSID, CONFIG_PORTAL_PASSWORD);
+  Serial.printf(
+      "[wifi] provisioning portal %s available at 192.168.4.1 or http://%s.local\n",
+      CONFIG_PORTAL_SSID, CONFIG_PORTAL_HOSTNAME);
 }

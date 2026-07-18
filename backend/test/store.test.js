@@ -1,7 +1,7 @@
-import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
 
-import { createStore } from '../src/store.js'
+import { createStore } from '../src/store.js';
 
 function record(receivedAt) {
   return {
@@ -23,23 +23,23 @@ function record(receivedAt) {
       gyro: { x: 0, y: 0, z: 0 },
       temp_c: 30,
     },
-  }
+  };
 }
 
 test('stores ordered telemetry and prunes expired records', () => {
-  const store = createStore(':memory:', 1)
-  store.saveTelemetry(record(1000))
-  store.saveTelemetry(record(2000))
+  const store = createStore(':memory:', 1);
+  store.saveTelemetry(record(1000));
+  store.saveTelemetry(record(2000));
 
-  assert.equal(store.latest('MARIA-STORE').received_at, 2000)
+  assert.equal(store.latest('MARIA-STORE').received_at, 2000);
   assert.deepEqual(
     store.history('MARIA-STORE', 2).map((item) => item.received_at),
-    [1000, 2000],
-  )
-  assert.equal(store.stats().telemetry_records, 2)
+    [1000, 2000]
+  );
+  assert.equal(store.stats().telemetry_records, 2);
 
-  const result = store.prune(2 * 24 * 60 * 60 * 1000)
-  assert.equal(result.telemetry, 2)
-  assert.equal(store.stats().telemetry_records, 0)
-  store.close()
-})
+  const result = store.prune(2 * 24 * 60 * 60 * 1000);
+  assert.equal(result.telemetry, 2);
+  assert.equal(store.stats().telemetry_records, 0);
+  store.close();
+});
