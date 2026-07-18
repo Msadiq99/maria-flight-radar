@@ -22,6 +22,7 @@ function start(name, args) {
     cwd: root,
     env: { ...process.env, FORCE_COLOR: '1' },
     stdio: ['inherit', 'pipe', 'pipe'],
+    detached: process.platform !== 'win32',
   });
   children.set(name, child);
   for (const stream of [child.stdout, child.stderr]) {
@@ -49,12 +50,24 @@ function start(name, args) {
 function shutdown(code = 0) {
   if (shuttingDown) return;
   shuttingDown = true;
-  for (const child of children.values()) child.kill('SIGTERM');
+  for (const child of children.values()) terminate(child, 'SIGTERM');
   setTimeout(() => {
     for (const child of children.values())
-      if (!child.killed) child.kill('SIGKILL');
+      if (!child.killed) terminate(child, 'SIGKILL');
     process.exit(code);
   }, 500);
+}
+
+function terminate(child, signal) {
+  if (process.platform !== 'win32' && child.pid) {
+    try {
+      process.kill(-child.pid, signal);
+      return;
+    } catch {
+      // The process may have already exited before its group is signalled.
+    }
+  }
+  child.kill(signal);
 }
 
 process.on('SIGINT', () => shutdown(0));
