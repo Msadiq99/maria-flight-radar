@@ -1,7 +1,7 @@
 # Public Release Security Audit
 
-Date: 2026-07-18  
-Branch: `chore/maria-public-release-rc1`  
+Date: 2026-07-18
+Branch: `chore/maria-public-release-rc1`
 Starting commit: `76818780f0d505b4af3d1a85093cece91de3bd4c`
 
 ## Tools Used
