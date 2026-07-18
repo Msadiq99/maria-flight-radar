@@ -53,6 +53,11 @@ npm run dev:check
 
 The backend health endpoint is <http://127.0.0.1:8081/health>.
 
+<img src="docs/assets/screenshots/maria-web-radar-demo.png" alt="MARIA radar console showing eight deterministic demo targets" width="960">
+
+The radar screenshot above is local deterministic demo data, not a live
+receiver capture or a physical hardware result.
+
 ## Architecture
 
 <p align="center">

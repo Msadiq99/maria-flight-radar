@@ -17,7 +17,7 @@ live receiver and physical hardware evidence.
 
 ## Validation Completed
 
-- Root tests: 27 passed.
+- Root tests: 28 passed.
 - Backend tests: 17 passed.
 - Native firmware tests: 15 passed.
 - Four firmware build environments passed: Core2 normal/diagnostic and

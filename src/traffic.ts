@@ -16,6 +16,7 @@ export type AircraftTraffic = {
   heading_deg: number;
   vertical_rate_mps: number;
   source: TrafficSource;
+  sourceCategory?: string | null;
   updated_at: number;
 };
 
@@ -63,6 +64,7 @@ type RadarSnapshotTrack = {
   headingDegrees: number | null;
   verticalRateMps: number | null;
   source: TrafficSource;
+  category?: string | null;
   receivedAt: string;
 };
 
@@ -98,12 +100,25 @@ export function snapshotToTrafficFeed(
       heading_deg: track.headingDegrees || 0,
       vertical_rate_mps: track.verticalRateMps || 0,
       source: track.source,
+      sourceCategory: track.category,
       updated_at: Date.parse(track.receivedAt),
     })),
     sourceHealth: snapshot.sourceHealth || EMPTY_HEALTH,
     effectiveSources: snapshot.effectiveSources || [],
     nextRefreshSeconds: snapshot.nextRefreshSeconds || 10,
   };
+}
+
+export function isSimulationFeed(feed: TrafficFeed) {
+  return (
+    feed.aircraft.length > 0 &&
+    feed.aircraft.every(
+      (aircraft) =>
+        aircraft.source === 'simulation' ||
+        aircraft.sourceCategory === 'simulation' ||
+        aircraft.sourceCategory === 'simulator'
+    )
+  );
 }
 
 async function fetchNearbyTraffic(

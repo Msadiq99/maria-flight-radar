@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { snapshotToTrafficFeed } from './traffic';
+import { isSimulationFeed, snapshotToTrafficFeed } from './traffic';
 
 describe('snapshotToTrafficFeed', () => {
   it('maps hybrid radar snapshots into the existing traffic feed shape', () => {
@@ -51,5 +51,33 @@ describe('snapshotToTrafficFeed', () => {
     });
     expect(feed.sourceHealth?.[0].status).toBe('healthy');
     expect(feed.nextRefreshSeconds).toBe(8);
+  });
+
+  it('identifies simulator tracks delivered through the local ADS-B adapter', () => {
+    const feed = snapshotToTrafficFeed(
+      {
+        generatedAt: '2026-07-18T10:00:00.000Z',
+        effectiveSources: ['local_adsb'],
+        aircraft: [
+          {
+            id: 'sim1',
+            icao24: 'sim1',
+            callsign: 'SIM1',
+            latitude: 0,
+            longitude: 0,
+            altitudeMeters: 1000,
+            groundSpeedMps: 100,
+            headingDegrees: 90,
+            verticalRateMps: 0,
+            source: 'local_adsb',
+            category: 'simulator',
+            receivedAt: '2026-07-18T10:00:00.000Z',
+          },
+        ],
+      },
+      'auto'
+    );
+
+    expect(isSimulationFeed(feed)).toBe(true);
   });
 });

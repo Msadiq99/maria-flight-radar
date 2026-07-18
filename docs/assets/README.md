@@ -6,8 +6,8 @@
   derivative of the hero artwork.
 - `diagrams/maria-local-first-architecture.svg` is an original repository
   diagram of the local-first data path.
-- `screenshots/` is intentionally empty until sanitized, reproducible demo-mode
-  screenshots can be captured with the required Node 22 runtime.
+- `screenshots/maria-web-radar-demo.png` is a reproducible local browser capture
+  of the radar in deterministic demo mode. It contains no live receiver data.
 
 Core2 physical UI evidence is pending and must not be substituted with concept
 artwork.

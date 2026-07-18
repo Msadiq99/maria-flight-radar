@@ -39,6 +39,7 @@ receiver-data/
 *.tmp
 __pycache__/
 *.pyc
+.playwright-cli/
 
 # Editor directories and files
 .vscode/*

@@ -29,7 +29,11 @@ import {
   type RadarPreferencesV2,
 } from './radar/radarPreferences';
 import { useTelemetry } from './telemetry';
-import { type HybridSource, useNearbyTraffic } from './traffic';
+import {
+  isSimulationFeed,
+  type HybridSource,
+  useNearbyTraffic,
+} from './traffic';
 
 const RANGES: RadarRange[] = [25, 50, 100, 200];
 const SOURCE_MODES: HybridSource[] = [
@@ -93,6 +97,14 @@ export function RadarScreen() {
   };
   const zoneValidation = validateAlertZones(zoneDraft, range);
   const traffic = useNearbyTraffic(centerLat, centerLon, range, sourceMode);
+  const demoMode = isSimulationFeed(traffic.feed);
+  const trafficState = traffic.unreachable
+    ? 'UNREACHABLE'
+    : traffic.stale
+      ? 'STALE'
+      : demoMode
+        ? 'DEMO'
+        : 'LIVE';
   const aircraft = useMemo(
     () =>
       centerLat === null || centerLon === null
@@ -187,7 +199,9 @@ export function RadarScreen() {
       <div className="radar-workspace">
         <aside className="radar-panel radar-overview">
           <h1>Radar Console</h1>
-          <p className="radar-kicker">LIVE AIRSPACE MONITOR</p>
+          <p className="radar-kicker">
+            {demoMode ? 'DEMO AIRSPACE MONITOR' : 'LIVE AIRSPACE MONITOR'}
+          </p>
           <div className="radar-metrics">
             <span>
               Aircraft<strong>{aircraft.length}</strong>
@@ -366,9 +380,9 @@ export function RadarScreen() {
             <div>
               <dt>Source</dt>
               <dd>
-                {SOURCE_LABELS[sourceMode]} ·{' '}
-                {traffic.feed.effectiveSources?.join(', ') ||
-                  traffic.feed.source}
+                {demoMode
+                  ? 'Demo · deterministic simulation'
+                  : `${SOURCE_LABELS[sourceMode]} · ${traffic.feed.effectiveSources?.join(', ') || traffic.feed.source}`}
               </dd>
             </div>
             <div>
@@ -381,7 +395,11 @@ export function RadarScreen() {
             </div>
           </dl>
           <div className="radar-source-health" aria-label="Aircraft sources">
-            {traffic.sourceHealth.length ? (
+            {demoMode ? (
+              <span className="is-healthy">
+                demo · {traffic.aircraft.length}
+              </span>
+            ) : traffic.sourceHealth.length ? (
               traffic.sourceHealth.map((source) => (
                 <span
                   key={source.source}
@@ -558,7 +576,7 @@ export function RadarScreen() {
               <h2>{selectedMetadata?.title || selected.callsign}</h2>
               <p className="radar-alert-badge">
                 {selectedMetadata?.alertZone || 'Tracking'} zone ·{' '}
-                {selectedMetadata?.freshness || 'Unknown'}
+                {demoMode ? 'Demo' : selectedMetadata?.freshness || 'Unknown'}
               </p>
               <dl>
                 <div>
@@ -603,7 +621,10 @@ export function RadarScreen() {
                     {selectedMetadata?.updateAge === null
                       ? '—'
                       : `${selectedMetadata?.updateAge}s ago`}{' '}
-                    · {selectedMetadata?.freshness || 'Unknown'}
+                    ·{' '}
+                    {demoMode
+                      ? 'Demo'
+                      : selectedMetadata?.freshness || 'Unknown'}
                   </dd>
                 </div>
               </dl>
@@ -672,14 +693,7 @@ export function RadarScreen() {
         </span>
         <span>Altitude {ALTITUDE_FILTER_LABELS[altitudeFilter]}</span>
         <span>GPS {record ? (record.gps.fix ? 'FIX' : 'NO FIX') : '—'}</span>
-        <span>
-          Traffic{' '}
-          {traffic.unreachable
-            ? 'UNREACHABLE'
-            : traffic.stale
-              ? 'STALE'
-              : 'LIVE'}
-        </span>
+        <span>Traffic {trafficState}</span>
         <span>
           Data{' '}
           {traffic.feed.updated_at
