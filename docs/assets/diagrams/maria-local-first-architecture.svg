@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="720" viewBox="0 0 1600 720" role="img" aria-labelledby="title desc">
+  <title id="title">MARIA local-first architecture</title>
+  <desc id="desc">A local ADS-B receiver or deterministic demo source feeds the MARIA backend, web radar, and ESP32 terminals.</desc>
+  <rect width="1600" height="720" fill="#0d1518"/>
+  <g fill="none" stroke="#2dd4bf" stroke-width="4" opacity=".85">
+    <path d="M355 310H545M850 310H1035M850 310H1035"/>
+    <path d="M850 310V515H1035"/>
+    <path d="M355 525H545" stroke-dasharray="12 12"/>
+  </g>
+  <g fill="#102529" stroke="#62e8dd" stroke-width="3">
+    <rect x="75" y="220" width="280" height="180" rx="12"/>
+    <rect x="75" y="435" width="280" height="180" rx="12"/>
+    <rect x="545" y="220" width="305" height="180" rx="12"/>
+    <rect x="1035" y="110" width="380" height="180" rx="12"/>
+    <rect x="1035" y="420" width="380" height="180" rx="12"/>
+  </g>
+  <g fill="#e7fbf8" font-family="Arial, sans-serif" text-anchor="middle">
+    <text x="215" y="275" font-size="28" font-weight="700">LOCAL ADS-B</text>
+    <text x="215" y="320" font-size="22">RTL-SDR + antenna</text>
+    <text x="215" y="355" font-size="22">readsb / dump1090</text>
+    <text x="215" y="490" font-size="28" font-weight="700">DEMO MODE</text>
+    <text x="215" y="535" font-size="22">deterministic simulator</text>
+    <text x="697" y="280" font-size="32" font-weight="700">MARIA BACKEND</text>
+    <text x="697" y="325" font-size="22">normalization, cache, source state</text>
+    <text x="1225" y="175" font-size="30" font-weight="700">WEB RADAR</text>
+    <text x="1225" y="220" font-size="22">radar, map, dashboard</text>
+    <text x="1225" y="485" font-size="30" font-weight="700">ESP32 TERMINALS</text>
+    <text x="1225" y="530" font-size="22">M5Stack Core2 and ESP32</text>
+  </g>
+  <text x="800" y="670" fill="#8fa8a5" font-family="Arial, sans-serif" font-size="22" text-anchor="middle">Local-first by default. OpenSky is optional and disabled.</text>
+</svg>
