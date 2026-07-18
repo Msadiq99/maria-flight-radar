@@ -1,15 +1,15 @@
 name: Feature request
 description: Propose a compatible improvement
-title: "[Feature]: "
+title: '[Feature]: '
 labels: [enhancement]
 body:
   - type: textarea
     id: problem
-    attributes: {label: Problem to solve}
-    validations: {required: true}
+    attributes: { label: Problem to solve }
+    validations: { required: true }
   - type: textarea
     id: solution
-    attributes: {label: Proposed solution}
+    attributes: { label: Proposed solution }
   - type: dropdown
     id: component
     attributes:
@@ -17,10 +17,10 @@ body:
       options: [Web, Backend, Local ADS-B, Firmware, Documentation]
   - type: textarea
     id: alternatives
-    attributes: {label: Alternatives considered}
+    attributes: { label: Alternatives considered }
   - type: textarea
     id: compatibility
-    attributes: {label: Compatibility concerns}
+    attributes: { label: Compatibility concerns }
   - type: checkboxes
     id: contribute
     attributes:

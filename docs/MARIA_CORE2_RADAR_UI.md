@@ -50,7 +50,7 @@ keeps the radar visible.
   (`ESP32-D0WDQ6-V3`, revision `v3.0`), with
   the bootloader, partition, and application hashes verified by esptool.
 - A non-interactive serial read received `[wifi] not connected (status=1),
-  retrying...`. The interactive PlatformIO monitor cannot allocate a terminal
+retrying...`. The interactive PlatformIO monitor cannot allocate a terminal
   in the validation environment (`termios: Operation not supported by device`),
   so it did not provide a complete boot capture.
 - The local backend smoke test served eight deterministic-simulation aircraft

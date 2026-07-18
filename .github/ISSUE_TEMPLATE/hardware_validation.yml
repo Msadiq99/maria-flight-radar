@@ -1,17 +1,21 @@
 name: Hardware validation
 description: Submit reproducible physical validation evidence
-title: "[Hardware validation]: "
+title: '[Hardware validation]: '
 labels: [firmware, hardware-validation]
 body:
   - type: textarea
     id: target
-    attributes: {label: Board, firmware environment, and commit}
-    validations: {required: true}
+    attributes: { label: Board, firmware environment, and commit }
+    validations: { required: true }
   - type: textarea
     id: results
-    attributes: {label: Build/upload/display/touch/Wi-Fi/backend/source badge/target count/test duration results}
-    validations: {required: true}
+    attributes:
+      {
+        label: Build/upload/display/touch/Wi-Fi/backend/source badge/target count/test duration results,
+      }
+    validations: { required: true }
   - type: textarea
     id: evidence
-    attributes: {label: Redacted logs, photos, known defects, and reproduction details}
-    validations: {required: true}
+    attributes:
+      { label: Redacted logs, photos, known defects, and reproduction details }
+    validations: { required: true }

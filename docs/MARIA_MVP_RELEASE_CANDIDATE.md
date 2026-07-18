@@ -128,7 +128,7 @@ Latest Core2 UI validation (2026-07-17):
 - The normal Core2 upload again completed with verified bootloader, partition,
   and application hashes.
 - A direct 20-second serial read received `[wifi] not connected (status=1),
-  retrying...`; it did not capture the boot sequence. The interactive monitor
+retrying...`; it did not capture the boot sequence. The interactive monitor
   is blocked by the non-TTY validation environment, reporting
   `termios: Operation not supported by device`.
 - `npm run dev:check` passed against the local stack. The radar snapshot used

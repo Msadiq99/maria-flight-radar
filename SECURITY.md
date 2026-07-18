@@ -2,9 +2,9 @@
 
 ## Supported Versions
 
-| Version | Supported |
-| --- | --- |
-| main / latest alpha | Yes |
+| Version                     | Supported   |
+| --------------------------- | ----------- |
+| main / latest alpha         | Yes         |
 | Older development snapshots | Best effort |
 
 ## Reporting a Vulnerability
