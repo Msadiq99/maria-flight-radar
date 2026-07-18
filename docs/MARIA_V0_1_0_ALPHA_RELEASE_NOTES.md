@@ -1,44 +1,73 @@
 # MARIA Flight Radar v0.1.0-alpha
 
-## Summary
+## Why This Release Exists
 
-The first public alpha establishes MARIA as a local-first flight-radar
-ecosystem with a web console, local backend, deterministic demo mode, and
-existing ESP32 firmware environments.
+This first public alpha establishes MARIA as an open-source, local-first flight
+radar platform. It provides a reproducible demo path while the project gathers
+live receiver and physical hardware evidence.
 
 ## Included
 
 - Web radar, map, and dashboard.
-- Local readsb/dump1090 `aircraft.json` adapter and deterministic fallback.
-- Source-state reporting, compact Core2 payload, and local backend APIs.
-- M5Stack Core2 and ESP32-2432S028R normal and diagnostic firmware builds.
+- Local backend and deterministic demo source.
+- readsb/dump1090-compatible local ADS-B software integration.
+- Live, cache, demo, and offline source states.
+- M5Stack Core2 and ESP32-2432S028R source targets and diagnostics.
+- Public CI, contribution documentation, issue forms, and security policy.
 
-## Data Modes
+## Validation Completed
 
-MARIA supports local receiver data, cached local snapshots, deterministic demo
-data, and offline state. OpenSky is optional, disabled by default, and not
-required for any alpha workflow.
+- Root tests: 27 passed.
+- Backend tests: 17 passed.
+- Native firmware tests: 15 passed.
+- Four firmware build environments passed: Core2 normal/diagnostic and
+  ESP32-2432S028R normal/diagnostic.
+- Clean-clone validation passed.
+- Root production audit: 0 vulnerabilities.
+- Backend production audit: 0 vulnerabilities.
+- Demo snapshot: 8 deterministic targets.
 
-## Known Limitations
+## Hardware Status
 
-Receiver hardware is not bundled. Live ADS-B and physical board validation are
-not claimed without evidence. Receiver installation is user-managed and alpha
-interfaces may change.
+- **M5Stack Core2:** firmware build-validated; upload evidence available;
+  physical display/touch evidence pending.
+- **ESP32-2432S028R:** firmware build-validated; physical validation pending.
+- **RTL-SDR:** integration software ready; receiver hardware validation pending.
 
-## Security and Safety
+## Requirements
 
-Keep MARIA on trusted local networks and never commit secrets or private
-coordinates. MARIA is experimental and not certified for navigation, air traffic
-control, collision avoidance, emergency response, or other safety-critical use.
-Data may be delayed, incomplete, inaccurate, or unavailable. Follow local rules
-for radio reception, antennas, networking, storage, and redistribution.
+- Node.js 22.12 or later.
+- npm.
+- PlatformIO for firmware work.
+- Optional RTL-SDR and 1090 MHz antenna for live mode.
+
+## Source-Only Release
+
+This alpha is source-only. Firmware binaries are not attached because board
+physical validation and universal flashing guidance are not yet complete.
+
+## Upgrade and Compatibility Notes
+
+This is an alpha release. Web APIs, configuration, firmware interfaces, and
+board support may evolve. Preserve local configuration outside Git and consult
+the [installation guide](INSTALLATION.md) before upgrading.
+
+## Security and Privacy Notes
+
+Do not commit credentials, receiver coordinates, raw captures, or local
+configuration. OpenSky is optional and disabled by default. MARIA requires no
+paid service or cloud aircraft-data provider for demo or local receiver use.
+
+## Safety Notice
+
+MARIA is experimental and not certified for navigation, air traffic control,
+collision avoidance, emergency response, or any safety-critical aviation use.
+Data may be delayed, incomplete, inaccurate, or unavailable.
+
+## License
+
+Apache License 2.0. See [LICENSE](../LICENSE).
 
 ## Next Milestone
 
-v0.2.0-beta focuses on live receiver validation and evidence for supported
-hardware.
-
-## Acknowledgments
-
-Built with the open-source React, Express, PlatformIO, Arduino, and ADS-B
-receiver ecosystems.
+v0.2.0-beta: live receiver validation.
