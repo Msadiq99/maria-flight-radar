@@ -64,16 +64,16 @@ falls back to deterministic simulation. It does not contact OpenSky by default.
   events with heartbeat frames.
 - `GET /api/devices` — discovered trackers ordered by most recent activity.
 - `GET /api/airports` — bundled airport and runway overlay metadata.
-- `GET /api/radar/snapshot?lat=24.7136&lon=46.6753&rangeKm=50&mode=auto` —
+- `GET /api/radar/snapshot?lat=<receiver-lat>&lon=<receiver-lon>&rangeKm=50&mode=auto` —
   normalized hybrid radar snapshot with aircraft, source health, and merge
   metadata.
 - `GET /api/radar/sources` — current aircraft-source status.
 - `GET /api/radar/aircraft/:icao24` — latest normalized detail for one aircraft.
-- `GET /api/devices/core2/radar?lat=24.7136&lon=46.6753&rangeKm=50` — compact
+- `GET /api/devices/core2/radar?lat=<receiver-lat>&lon=<receiver-lon>&rangeKm=50` — compact
   radar payload for the M5Stack Core2 firmware.
 - `POST /api/radar/config/validate` — validates source mode and receiver URL
   shape without storing credentials.
-- `GET /api/traffic/nearby?lat=24.7136&lon=46.6753&radius_km=50` — legacy
+- `GET /api/traffic/nearby?lat=<receiver-lat>&lon=<receiver-lon>&radius_km=50` — legacy
   nearby aircraft shape, preserved for existing clients and backed by the
   hybrid radar service.
 - `GET /health` — readiness check including SQLite status and storage counts.

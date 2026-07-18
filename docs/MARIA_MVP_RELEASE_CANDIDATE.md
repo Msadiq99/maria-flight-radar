@@ -54,7 +54,7 @@ VITE_API_BASE_URL=http://127.0.0.1:8081 npm run dev -- --host 127.0.0.1
 Then open:
 
 ```text
-http://127.0.0.1:5175/radar?lat=24.7136&lon=46.6753
+http://127.0.0.1:5175/radar?lat=<receiver-lat>&lon=<receiver-lon>
 ```
 
 If Vite selects another port, use the port printed by `npm run dev`.
@@ -71,19 +71,19 @@ pio run -e maria-m5stack-core2
 Upload to the validated Core2 serial port:
 
 ```bash
-pio run -e maria-m5stack-core2 -t upload --upload-port /dev/cu.usbserial-537A0079331
+pio run -e maria-m5stack-core2 -t upload --upload-port /dev/cu.usbserial-*
 ```
 
 Open the monitor:
 
 ```bash
-pio device monitor --port /dev/cu.usbserial-537A0079331 --baud 115200
+pio device monitor --port /dev/cu.usbserial-* --baud 115200
 ```
 
-The Core2 backend URL for the current Mac LAN run was:
+Set the Core2 backend URL to the host accessible from the device Wi-Fi:
 
 ```text
-http://172.16.194.79:8081
+http://<MARIA_BACKEND_HOST>:8081
 ```
 
 ## Setup Instructions
@@ -116,7 +116,7 @@ Automated and API-level verification from this RC pass:
 - `/api/devices/core2/radar` returned HTTP 200 with 8 compact aircraft targets.
 - Web app loaded `/radar` through Vite and polled `/api/radar/snapshot`.
 - Core2 normal firmware built successfully.
-- Core2 upload succeeded on `/dev/cu.usbserial-537A0079331`.
+- Core2 upload succeeded on a detected USB serial port.
 - Detected Core2 upload chip: `ESP32-D0WDQ6-V3 (revision v3.0)`.
 - Normal-runtime observability fix committed as `211df5a`.
 
@@ -149,7 +149,7 @@ layout with source badges, bounded labels, and the existing deterministic
 fallback. See `[MARIA_CORE2_RADAR_UI.md](MARIA_CORE2_RADAR_UI.md)`.
 
 - Firmware environment: `maria-m5stack-core2`.
-- Serial port: `/dev/cu.usbserial-537A0079331`.
+- Serial port: detected USB serial device.
 - Upload result: successful; bootloader, partition table, and application
   hashes verified.
 - Chip: `ESP32-D0WDQ6-V3`, revision `v3.0`.

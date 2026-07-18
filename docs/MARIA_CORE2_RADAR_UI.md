@@ -46,8 +46,8 @@ keeps the radar visible.
   `maria-m5stack-core2-diag` successfully.
 - The native firmware suite passed 15 of 15 tests, including radar geometry,
   source badges, and touch control coverage.
-- Normal Core2 firmware uploaded successfully to
-  `/dev/cu.usbserial-537A0079331` (`ESP32-D0WDQ6-V3`, revision `v3.0`), with
+- Normal Core2 firmware uploaded successfully to a detected USB serial port
+  (`ESP32-D0WDQ6-V3`, revision `v3.0`), with
   the bootloader, partition, and application hashes verified by esptool.
 - A non-interactive serial read received `[wifi] not connected (status=1),
   retrying...`. The interactive PlatformIO monitor cannot allocate a terminal

@@ -7,7 +7,7 @@
 #define WIFI_PASSWORD "your-password"
 
 // Backend telemetry endpoint (see firmware/README.md for the request contract)
-#define API_HOST "http://192.168.1.100:8080"
+#define API_HOST "http://<MARIA_BACKEND_HOST>:8081"
 #define API_TELEMETRY_PATH "/api/telemetry"
 #define API_KEY "change-me"
 

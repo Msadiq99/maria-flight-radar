@@ -12,8 +12,8 @@ supported separately.
 
 ## First Hardware Flash Result
 
-The first Core2 diagnostic upload completed successfully on
-`/dev/cu.usbserial-537A0079331`. The board displayed the
+The first Core2 diagnostic upload completed successfully on a detected USB
+serial port. The board displayed the
 `MARIA FIRST-FLASH DIAGNOSTICS` menu after flashing, and no visible reboot loop
 or crash was observed.
 
@@ -65,11 +65,12 @@ system_profiler SPUSBDataType
 Do not upload to `/dev/cu.debug-console` or
 `/dev/cu.Bluetooth-Incoming-Port`.
 
-The observed Core2 serial format was:
+Use a detected Core2 serial device such as:
 
 ```text
-/dev/cu.usbserial-537A0079331
-USB VID:PID=1A86:55D4 SER=537A007933
+/dev/cu.usbserial-*
+/dev/ttyUSB0
+COM3
 ```
 
 ## Upload

@@ -7,10 +7,19 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
+.env
+.env.*
+!.env.example
+node_modules/
+backend/node_modules/
+dist/
+build/
+coverage/
 dist-ssr
 *.local
+backend/.env
+backend/.env.*
+!backend/.env.example
 backend/data/
 *.sqlite
 *.sqlite-shm
@@ -22,8 +31,14 @@ adsb-fixture-private*.json
 receiver-location*.json
 
 # PlatformIO / firmware
-firmware/.pio
+firmware/.pio/
+.pio/
 firmware/include/config.h
+runtime-data/
+receiver-data/
+*.tmp
+__pycache__/
+*.pyc
 
 # Editor directories and files
 .vscode/*
