@@ -217,7 +217,12 @@ export function RadarScreen() {
           <strong>MARIA FLIGHT RADAR</strong>
           <span>MSDK3.dev</span>
         </div>
-        <div className="mission-command-summary" aria-label="Command status">
+        <div
+          className="mission-command-summary"
+          aria-label="Command status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
           <SourceStateBadge state={sourceState} />
           <TelemetryReadout
             label="Targets"
@@ -575,11 +580,14 @@ export function RadarScreen() {
                     transform={`translate(${p.x} ${p.y}) rotate(${item.heading_deg})`}
                     onClick={() => setSelectedId(item.id)}
                     onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ')
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
                         setSelectedId(item.id);
+                      }
                     }}
                     tabIndex={0}
                     role="button"
+                    aria-pressed={selectedId === item.id}
                     aria-label={`Select ${item.callsign}`}
                   >
                     <path d="M0-10L5 7L0 4L-5 7Z" />
@@ -745,7 +753,7 @@ export function RadarScreen() {
                 </a>
               </>
             ) : (
-              <p className="radar-empty">
+              <p className="radar-empty" role="status">
                 {traffic.unreachable
                   ? 'Traffic feed unavailable.'
                   : visibleAircraft.length

@@ -637,7 +637,15 @@
   }
 
   .mission-control-console .radar-scope-panel {
-    grid-row: auto;
+    grid-row: 1;
+  }
+
+  .mission-control-console .radar-overview {
+    grid-row: 2;
+  }
+
+  .mission-control-console .radar-selected {
+    grid-row: 3;
   }
 
   .radar-display-well {
@@ -650,6 +658,11 @@
 
   .mission-system-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mission-control-console .radar-controls > * {
+    flex: 1 1 calc(50% - 0.5rem);
+    justify-content: center;
   }
 }
 
