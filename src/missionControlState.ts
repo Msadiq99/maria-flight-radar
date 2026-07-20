@@ -24,3 +24,15 @@ export function selectedTargetStateWording(
   if (sourceState === 'OFFLINE') return `${zone} zone · Source offline`;
   return `${zone} zone · ${freshness}`;
 }
+
+export function emptySelectionMessage({
+  unreachable,
+  visibleCount,
+}: {
+  unreachable: boolean;
+  visibleCount: number;
+}) {
+  if (unreachable) return 'Traffic feed unavailable.';
+  if (visibleCount > 0) return 'No aircraft selected.';
+  return 'No aircraft match the current filters.';
+}

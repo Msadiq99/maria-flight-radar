@@ -154,6 +154,14 @@ export function TechnicalDivider() {
   return <div className="mission-divider" aria-hidden="true" />;
 }
 
+export function EmptyModuleState({ children }: PropsWithChildren) {
+  return (
+    <p className="radar-empty" role="status">
+      {children}
+    </p>
+  );
+}
+
 export function SystemStatusStrip({ children }: PropsWithChildren) {
   return (
     <footer className="mission-system-strip" aria-label="System status">

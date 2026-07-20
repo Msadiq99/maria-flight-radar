@@ -31,6 +31,7 @@ import {
 import { useTelemetry } from './telemetry';
 import {
   ChamferButton,
+  EmptyModuleState,
   InsetDisplay,
   MissionPanel,
   MissionPanelHeader,
@@ -44,6 +45,7 @@ import {
 } from './missionControl';
 import {
   deriveSourceState,
+  emptySelectionMessage,
   selectedTargetStateWording,
 } from './missionControlState';
 import {
@@ -753,13 +755,12 @@ export function RadarScreen() {
                 </a>
               </>
             ) : (
-              <p className="radar-empty" role="status">
-                {traffic.unreachable
-                  ? 'Traffic feed unavailable.'
-                  : visibleAircraft.length
-                    ? 'No aircraft selected.'
-                    : 'No aircraft match the current filters.'}
-              </p>
+              <EmptyModuleState>
+                {emptySelectionMessage({
+                  unreachable: traffic.unreachable,
+                  visibleCount: visibleAircraft.length,
+                })}
+              </EmptyModuleState>
             )}
           </div>
         </MissionPanel>
