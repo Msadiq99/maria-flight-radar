@@ -24,8 +24,12 @@ describe('mode registry', () => {
     expect(DEFAULT_RADAR_RENDER_MODE).toBe('tactical');
   });
 
-  it('only exposes tactical as implemented in this checkpoint', () => {
-    expect(listImplementedModes().map((m) => m.id)).toEqual(['tactical']);
+  it('exposes tactical, mission-control, and classic as implemented', () => {
+    expect(listImplementedModes().map((m) => m.id)).toEqual([
+      'tactical',
+      'mission-control',
+      'classic',
+    ]);
   });
 
   it('declares all five modes with their required profile fields', () => {
@@ -50,8 +54,14 @@ describe('mode registry', () => {
     expect(resolveRadarRenderMode(null)).toBe('tactical');
   });
 
+  it('resolves an implemented mode to itself', () => {
+    expect(resolveRadarRenderMode('mission-control')).toBe('mission-control');
+    expect(resolveRadarRenderMode('classic')).toBe('classic');
+  });
+
   it('resolves a valid but not-yet-implemented mode to the default', () => {
-    expect(resolveRadarRenderMode('classic')).toBe('tactical');
+    expect(resolveRadarRenderMode('presentation')).toBe('tactical');
+    expect(resolveRadarRenderMode('minimal')).toBe('tactical');
   });
 
   it('round-trips a stored preference through save/load using a namespaced key', () => {
