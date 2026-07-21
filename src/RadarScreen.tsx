@@ -3,7 +3,12 @@ import { DEVICE_ID } from './config';
 import { predictFlight } from './flightIntel';
 import type { RadarRange } from './radarGeometry';
 import { buildRadarScene } from './lib/radar-engine/sceneBuilder';
-import { TacticalRadarMode } from './components/radar-engine/modes/TacticalRadarMode';
+import { resolveRadarRenderMode } from './lib/radar-engine/modeRegistry';
+import {
+  radarModeClassName,
+  radarThemeToCssVars,
+} from './lib/radar-engine/themeRegistry';
+import { RadarModeRenderer } from './components/radar-engine/modes/RadarModeRenderer';
 import {
   ALTITUDE_FILTER_LABELS,
   filterAircraftByAltitude,
@@ -103,6 +108,11 @@ export function RadarScreen() {
       ? (requested as HybridSource)
       : 'auto';
   });
+  // Development-only render-mode override via ?radarMode=. Only implemented
+  // modes are accepted; anything else falls back to Tactical. Changing it
+  // affects rendering only — it never triggers a data refetch or alters the
+  // source state. No persistence yet (arrives with the Checkpoint 4 selector).
+  const renderMode = resolveRadarRenderMode(params.get('radarMode'));
   const updatePreferences = (next: Partial<RadarPreferencesV2>) => {
     setPreferences((current) => {
       const resolved = { ...current, ...next, version: 2 as const };
@@ -236,7 +246,10 @@ export function RadarScreen() {
       : `${centerLat.toFixed(4)}, ${centerLon?.toFixed(4)}`;
 
   return (
-    <main className="radar-console mission-control-console">
+    <main
+      className={`radar-console mission-control-console ${radarModeClassName(renderMode)}`}
+      style={radarThemeToCssVars(renderMode)}
+    >
       <header className="radar-topbar mission-command-header">
         <div className="mission-command-brand">
           <ModuleIdentifier>SYS-MARIA-CONTROL</ModuleIdentifier>
@@ -505,7 +518,8 @@ export function RadarScreen() {
             }
           />
           <InsetDisplay className="radar-display-well">
-            <TacticalRadarMode
+            <RadarModeRenderer
+              mode={renderMode}
               scene={radarScene}
               paused={paused}
               showLabels={labels}
