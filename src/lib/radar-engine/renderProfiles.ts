@@ -26,11 +26,10 @@ const CLASSIC_LAYERS: RadarLayerId[] = [
   'label',
   'selection',
 ];
-const PRESENTATION_LAYERS: RadarLayerId[] = [
-  ...TACTICAL_LAYERS,
-  'prediction',
-  'leaderLine',
-];
+// Presentation uses the full implemented stack plus the overlay slot for
+// its cinematic status overlay. The prediction/leaderLine layers are not
+// yet implemented, so they are intentionally omitted until Checkpoint 5.
+const PRESENTATION_LAYERS: RadarLayerId[] = [...TACTICAL_LAYERS, 'overlay'];
 const MINIMAL_LAYERS: RadarLayerId[] = [
   'background',
   'rangeRing',
@@ -106,15 +105,17 @@ export const PRESENTATION_PROFILE: RadarRenderProfile = {
   id: 'presentation',
   label: 'Presentation',
   description: 'Cinematic 2.5D mode for demos, screenshots, and exhibitions.',
-  implemented: false,
+  implemented: true,
   density: 'rich',
   animationLevel: 'cinematic',
   visibleLayers: PRESENTATION_LAYERS,
   labelsEnabledByDefault: true,
   trailsEnabledByDefault: true,
-  predictionEnabledByDefault: true,
+  // No prediction/map layers exist yet; keep the hints off so they match
+  // what actually renders.
+  predictionEnabledByDefault: false,
   sweepEnabledByDefault: true,
-  mapEnabledByDefault: true,
+  mapEnabledByDefault: false,
   glowLevel: 'high',
   targetLimit: null,
   labelLimit: null,
@@ -133,7 +134,7 @@ export const MINIMAL_PROFILE: RadarRenderProfile = {
   label: 'Minimal Embedded',
   description:
     'Compact, high-contrast preview of the embedded terminal design.',
-  implemented: false,
+  implemented: true,
   density: 'compact',
   animationLevel: 'none',
   visibleLayers: MINIMAL_LAYERS,

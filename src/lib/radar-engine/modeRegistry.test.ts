@@ -24,11 +24,13 @@ describe('mode registry', () => {
     expect(DEFAULT_RADAR_RENDER_MODE).toBe('tactical');
   });
 
-  it('exposes tactical, mission-control, and classic as implemented', () => {
+  it('exposes exactly five implemented modes', () => {
     expect(listImplementedModes().map((m) => m.id)).toEqual([
       'tactical',
       'mission-control',
       'classic',
+      'presentation',
+      'minimal',
     ]);
   });
 
@@ -54,25 +56,44 @@ describe('mode registry', () => {
     expect(resolveRadarRenderMode(null)).toBe('tactical');
   });
 
-  it('resolves an implemented mode to itself', () => {
-    expect(resolveRadarRenderMode('mission-control')).toBe('mission-control');
-    expect(resolveRadarRenderMode('classic')).toBe('classic');
+  it('resolves every implemented mode to itself', () => {
+    for (const mode of [
+      'tactical',
+      'mission-control',
+      'classic',
+      'presentation',
+      'minimal',
+    ] as const) {
+      expect(resolveRadarRenderMode(mode)).toBe(mode);
+    }
   });
 
-  it('resolves a valid but not-yet-implemented mode to the default', () => {
-    expect(resolveRadarRenderMode('presentation')).toBe('tactical');
-    expect(resolveRadarRenderMode('minimal')).toBe('tactical');
-  });
-
-  it('round-trips a stored preference through save/load using a namespaced key', () => {
+  it('round-trips each mode through save/load using a namespaced key', () => {
     const storage = memoryStorage();
-    saveRadarRenderMode('tactical', storage);
-    expect(storage.getItem(RADAR_RENDER_MODE_PREFERENCE_KEY)).toBe('tactical');
+    for (const mode of ['presentation', 'minimal', 'tactical'] as const) {
+      saveRadarRenderMode(mode, storage);
+      expect(storage.getItem(RADAR_RENDER_MODE_PREFERENCE_KEY)).toBe(mode);
+      expect(loadStoredRadarRenderMode(storage)).toBe(mode);
+    }
+  });
+
+  it('loads Tactical when the stored value is invalid', () => {
+    const storage = memoryStorage();
+    storage.setItem(RADAR_RENDER_MODE_PREFERENCE_KEY, 'bogus-mode');
     expect(loadStoredRadarRenderMode(storage)).toBe('tactical');
   });
 
   it('falls back to the default when no storage is available', () => {
     expect(loadStoredRadarRenderMode(undefined)).toBe('tactical');
+  });
+
+  it('does not throw when storage getItem throws (storage unavailable)', () => {
+    const throwing = {
+      getItem: () => {
+        throw new Error('storage blocked');
+      },
+    };
+    expect(loadStoredRadarRenderMode(throwing)).toBe('tactical');
   });
 
   it('minimal profile enforces the documented target/label/trail caps', () => {

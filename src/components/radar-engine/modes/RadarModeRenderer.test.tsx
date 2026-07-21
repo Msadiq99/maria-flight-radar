@@ -13,6 +13,16 @@ const IMPLEMENTED: RadarRenderMode[] = [
   'tactical',
   'mission-control',
   'classic',
+  'presentation',
+  'minimal',
+];
+
+// Minimal's profile has no trail layer; the rest render trails.
+const MODES_WITH_TRAILS: RadarRenderMode[] = [
+  'tactical',
+  'mission-control',
+  'classic',
+  'presentation',
 ];
 
 function demoScene() {
@@ -90,6 +100,17 @@ describe('RadarModeRenderer — every implemented mode', () => {
     }
   });
 
+  it('projects identical target coordinates across every mode (shared scene, no per-mode projection)', () => {
+    const coordsFor = (markup: string) =>
+      (markup.match(/translate\([^)]*\)/g) || []).sort();
+    const tactical = coordsFor(render('tactical'));
+    for (const mode of IMPLEMENTED) {
+      // Presentation's 2.5D tilt is a CSS wrapper transform, not an SVG
+      // coordinate change — the in-SVG translates must match Tactical's.
+      expect(coordsFor(render(mode))).toEqual(tactical);
+    }
+  });
+
   it('renders the selected target and its bracket in every mode', () => {
     for (const mode of IMPLEMENTED) {
       const markup = render(mode);
@@ -109,8 +130,8 @@ describe('RadarModeRenderer — every implemented mode', () => {
     }
   });
 
-  it('honors the trails toggle in every mode', () => {
-    for (const mode of IMPLEMENTED) {
+  it('honors the trails toggle in every trail-rendering mode', () => {
+    for (const mode of MODES_WITH_TRAILS) {
       expect(render(mode, { showTrails: true })).toContain('radar-trail');
       expect(render(mode, { showTrails: false })).not.toContain('radar-trail');
     }
@@ -125,11 +146,10 @@ describe('RadarModeRenderer — every implemented mode', () => {
     }
   });
 
-  it('falls back to Tactical layer set for a not-yet-implemented mode', () => {
-    // presentation is not implemented; renderer should still produce a scope.
+  it('falls back to a working Tactical scope for an unknown mode', () => {
     const markup = renderToStaticMarkup(
       <RadarModeRenderer
-        mode={'presentation' as RadarRenderMode}
+        mode={'nonexistent-mode' as RadarRenderMode}
         scene={demoScene()}
         paused={false}
         showLabels
@@ -139,6 +159,16 @@ describe('RadarModeRenderer — every implemented mode', () => {
     );
     expect(markup).toContain('radar-scope');
     expect(countTargets(markup)).toBe(3);
+  });
+
+  it('wraps Presentation in a 2.5D stage and Minimal in a preview frame', () => {
+    expect(render('presentation')).toContain('radar-presentation-stage');
+    expect(render('minimal')).toContain('radar-minimal-frame');
+  });
+
+  it('renders no glow/blur classes in Minimal mode', () => {
+    const markup = render('minimal');
+    expect(markup).not.toMatch(/blur|drop-shadow/);
   });
 });
 
@@ -163,16 +193,19 @@ describe('shared animation foundation', () => {
     );
   });
 
-  it('stops sweep rotation under reduced motion in base and classic modes', () => {
+  it('stops sweep rotation under reduced motion in base, classic, and presentation modes', () => {
     expect(appCss).toMatch(
       /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.radar-sweep path[\s\S]*animation: none/
     );
     expect(radarEngineCss).toMatch(
       /prefers-reduced-motion: reduce[\s\S]*radar-mode-classic[\s\S]*animation: none/
     );
+    expect(radarEngineCss).toMatch(
+      /prefers-reduced-motion: reduce[\s\S]*radar-presentation-plane[\s\S]*transition: none/
+    );
   });
 
-  it('uses no per-target or per-layer JS animation loop', () => {
+  it('uses no per-target or per-layer JS animation loop in any engine file', () => {
     // The sweep is CSS-only; no layer or mode component may spin its own clock.
     const files = [
       '../layers/AircraftLayer.tsx',
@@ -182,10 +215,24 @@ describe('shared animation foundation', () => {
       './TacticalRadarMode.tsx',
       './MissionControlRadarMode.tsx',
       './ClassicRadarMode.tsx',
+      './PresentationRadarMode.tsx',
+      './MinimalEmbeddedRadarMode.tsx',
     ];
     for (const file of files) {
       const source = readFileSync(new URL(file, import.meta.url), 'utf8');
       expect(source).not.toMatch(/requestAnimationFrame|setInterval/);
     }
+  });
+
+  it('adds no WebGL or Three.js dependency (Presentation stays SVG/CSS)', () => {
+    const presentation = readFileSync(
+      new URL('./PresentationRadarMode.tsx', import.meta.url),
+      'utf8'
+    );
+    // Guard against real usage (imports / WebGL context), not prose mentions.
+    expect(presentation).not.toMatch(/from ['"]three['"]/);
+    expect(presentation).not.toMatch(/getContext\(\s*['"]webgl/i);
+    // Presentation still renders the shared SVG viewport.
+    expect(presentation).toContain('RadarViewport');
   });
 });

@@ -147,13 +147,69 @@ const CLASSIC_THEME: RadarTheme = {
   glow: 2,
 };
 
+/**
+ * Presentation: cinematic navy/black with a cyan–blue grid, brighter
+ * trails, a wider softer sweep, and a stronger (but still restrained)
+ * glow for the elevated 2.5D plane.
+ */
+const PRESENTATION_THEME: RadarTheme = {
+  background: '#04070f',
+  rings: '#2f6fb0',
+  grid: '#1d4a7a',
+  compass: '#7fd4ff',
+  center: '#ffe07a',
+  sweep: '#57c8ff',
+  sweepOpacity: 0.16,
+  sweepDurationMs: 7000,
+  normalTarget: '#8fe9ff',
+  normalTargetStroke: '#eafaff',
+  advisory: '#5ed7ff',
+  warning: '#ffc663',
+  critical: '#ff6b74',
+  selectedTarget: '#ffe07a',
+  selectedTargetStroke: '#fff4c2',
+  stale: '#6f8296',
+  label: '#cdeeff',
+  trail: '#54b6f0',
+  prediction: '#7fd4ff',
+  selectionBracket: '#ffe07a',
+  glow: 4,
+};
+
+/**
+ * Minimal Embedded: flat, high-contrast preview of the ESP32 display
+ * language. No glow, no blur, crisp rings, short labels.
+ */
+const MINIMAL_THEME: RadarTheme = {
+  background: '#000000',
+  rings: '#2f8f5a',
+  grid: '#1a4030',
+  compass: '#7fe6a8',
+  center: '#ffd23f',
+  sweep: '#2f8f5a',
+  sweepOpacity: 0.1,
+  sweepDurationMs: 6000,
+  normalTarget: '#57ff8f',
+  normalTargetStroke: '#00110a',
+  advisory: '#57d0ff',
+  warning: '#ffd23f',
+  critical: '#ff4d4d',
+  selectedTarget: '#ffffff',
+  selectedTargetStroke: '#000000',
+  stale: '#3a6b4f',
+  label: '#c7ffdb',
+  trail: '#2f8f5a',
+  prediction: '#7fe6a8',
+  selectionBracket: '#ffffff',
+  glow: 0,
+};
+
 export const RADAR_THEMES: Record<RadarRenderMode, RadarTheme> = {
   tactical: TACTICAL_THEME,
   'mission-control': MISSION_CONTROL_THEME,
   classic: CLASSIC_THEME,
-  // Placeholders reuse Tactical until their modes are implemented.
-  presentation: TACTICAL_THEME,
-  minimal: TACTICAL_THEME,
+  presentation: PRESENTATION_THEME,
+  minimal: MINIMAL_THEME,
 };
 
 /** CSS custom-property names consumed by the radar layer stylesheet. */
