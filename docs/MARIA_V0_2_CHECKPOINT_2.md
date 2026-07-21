@@ -113,7 +113,7 @@ Ten layer components under `src/components/radar-engine/layers/`, each receiving
 
 ## Risks for Checkpoint 3
 
-- Mission Control must reuse the *existing* `missionControl.tsx`/`.css` page chrome (already MARIA's current look) around `RadarViewport` — the risk is building new chrome instead of wrapping the existing shell, which would duplicate work and diverge visually from what's already shipped.
+- Mission Control must reuse the _existing_ `missionControl.tsx`/`.css` page chrome (already MARIA's current look) around `RadarViewport` — the risk is building new chrome instead of wrapping the existing shell, which would duplicate work and diverge visually from what's already shipped.
 - Classic Radar's phosphor/persistence sweep has no prior implementation; must respect the single-shared-animation-clock and no-full-screen-blur constraints (Phase 14) from the start rather than retrofitting them.
 - Flipping `implemented: true` for a second mode means the mode registry's `listImplementedModes()` output changes — any future selector UI test written against "only Tactical" will need updating in the same commit.
 
