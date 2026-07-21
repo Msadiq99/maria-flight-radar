@@ -79,6 +79,14 @@ validation is pending for this alpha.
 - M5Stack Core2 and ESP32-2432S028R firmware source and diagnostics.
 - Documentation, contribution templates, Dependabot, and public CI.
 
+**In development (MARIA v0.2 — not released)**
+
+- A modular radar rendering engine with five render modes — Tactical
+  (default), Mission Control, Classic Radar, Presentation, and Minimal
+  Embedded — sharing one scene model and truthful source-state handling.
+  See [render modes](docs/MARIA_RADAR_RENDER_MODES.md) and the
+  [engine overview](docs/MARIA_V0_2_RADAR_RENDERING_ENGINE.md).
+
 **Not yet included**
 
 - A validated RTL-SDR receiver package or guaranteed reception range.
