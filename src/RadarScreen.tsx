@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DEVICE_ID } from './config';
 import { predictFlight } from './flightIntel';
 import type { RadarRange } from './radarGeometry';
 import { buildRadarScene } from './lib/radar-engine/sceneBuilder';
 import {
   DEFAULT_RADAR_RENDER_MODE,
-  getRenderProfile,
   loadStoredRadarRenderMode,
   resolveRadarRenderMode,
   saveRadarRenderMode,
@@ -17,6 +16,7 @@ import {
 } from './lib/radar-engine/themeRegistry';
 import { RadarModeRenderer } from './components/radar-engine/modes/RadarModeRenderer';
 import { RadarModeSelector } from './components/radar-engine/RadarModeSelector';
+import { useRadarAnnouncements } from './components/radar-engine/useRadarAnnouncements';
 import {
   ALTITUDE_FILTER_LABELS,
   filterAircraftByAltitude,
@@ -133,15 +133,6 @@ export function RadarScreen() {
     // Persist only on an active user selection (not the debug query param).
     saveRadarRenderMode(resolved);
   };
-  const [modeAnnouncement, setModeAnnouncement] = useState('');
-  const didMountMode = useRef(false);
-  useEffect(() => {
-    if (!didMountMode.current) {
-      didMountMode.current = true;
-      return;
-    }
-    setModeAnnouncement(`Radar mode: ${getRenderProfile(renderMode).label}`);
-  }, [renderMode]);
   const updatePreferences = (next: Partial<RadarPreferencesV2>) => {
     setPreferences((current) => {
       const resolved = { ...current, ...next, version: 2 as const };
@@ -184,6 +175,12 @@ export function RadarScreen() {
   );
   const selected =
     visibleAircraft.find((item) => item.id === selectedId) || null;
+  const liveAnnouncement = useRadarAnnouncements({
+    renderMode,
+    selectedId: selected?.id ?? null,
+    selectedCallsign: selected?.callsign ?? null,
+    sourceState,
+  });
   const selectedZone = selected
     ? classifyAlertZone(selected.distance_km, preferences.alertZones)
     : null;
@@ -280,7 +277,7 @@ export function RadarScreen() {
       style={radarThemeToCssVars(renderMode)}
     >
       <p className="radar-visually-hidden" aria-live="polite" role="status">
-        {modeAnnouncement}
+        {liveAnnouncement}
       </p>
       <header className="radar-topbar mission-command-header">
         <div className="mission-command-brand">

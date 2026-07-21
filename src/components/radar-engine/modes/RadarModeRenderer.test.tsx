@@ -170,6 +170,48 @@ describe('RadarModeRenderer — every implemented mode', () => {
     const markup = render('minimal');
     expect(markup).not.toMatch(/blur|drop-shadow/);
   });
+
+  it('renders no active overlay slots with shipped defaults (planned overlays inactive)', () => {
+    for (const mode of IMPLEMENTED) {
+      expect(render(mode)).not.toContain('radar-overlay-slot');
+    }
+  });
+});
+
+describe('critical target accessibility cue', () => {
+  it('marks critical targets with a non-color shape cue (marker ring)', () => {
+    const criticalScene = buildRadarScene({
+      aircraft: [
+        {
+          id: 'AC1',
+          callsign: 'MRA1',
+          lat: 24.701,
+          lon: 46.701,
+          distance_km: 1, // inside the default 5km critical zone
+          heading_deg: 0,
+          updated_at: TIMESTAMP,
+        },
+      ],
+      center: CENTER,
+      rangeKm: 50,
+      altitudeFilter: 'all',
+      alertZones: DEFAULT_ALERT_ZONES,
+      selectedTargetId: null,
+      sourceState: 'DEMO',
+      timestamp: TIMESTAMP,
+    });
+    const markup = renderToStaticMarkup(
+      <RadarModeRenderer
+        mode="tactical"
+        scene={criticalScene}
+        paused={false}
+        showLabels
+        showTrails
+        onSelectTarget={() => {}}
+      />
+    );
+    expect(markup).toContain('radar-critical-marker');
+  });
 });
 
 describe('shared animation foundation', () => {

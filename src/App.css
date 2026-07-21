@@ -341,6 +341,13 @@
   stroke: var(--radar-selection-bracket, #f4d35e);
   stroke-width: 1.5;
 }
+.radar-critical-marker {
+  fill: none;
+  stroke: var(--radar-critical, #ff5e68);
+  stroke-width: 1.25;
+  stroke-dasharray: 2 2;
+  pointer-events: none;
+}
 .radar-controls {
   display: flex;
   flex-wrap: wrap;
