@@ -11,7 +11,7 @@ export function AircraftLayer({
         .map((target) => (
           <g
             key={target.id}
-            className={`radar-target is-zone-${target.alertState} ${target.selected ? 'is-selected' : ''}`}
+            className={`radar-target is-zone-${target.alertState} ${target.selected ? 'is-selected' : ''} ${target.freshness === 'stale' ? 'is-stale' : ''}`}
             transform={`translate(${target.projectedX} ${target.projectedY}) rotate(${target.heading})`}
             onClick={() => onSelect(target.id)}
             onKeyDown={(event) => {

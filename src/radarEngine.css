@@ -1,0 +1,63 @@
+/*
+ * Radar-engine mode structure.
+ *
+ * Per-mode PALETTE comes from inline `--radar-*` custom properties set
+ * by the theme registry on the console root. This file holds only the
+ * structural / effect rules a flat color variable cannot express
+ * (phosphor backdrop, restrained glow), scoped by the `radar-mode-*`
+ * class the same root carries.
+ */
+
+/* ---- Classic phosphor mode ---------------------------------------- */
+
+/* Near-black green scope backdrop, replacing the periwinkle grid well. */
+.radar-mode-classic .radar-display-well {
+  background-color: #020a04;
+  background-image: radial-gradient(
+    circle at center,
+    rgb(59 255 119 / 0.05),
+    transparent 70%
+  );
+}
+
+.radar-mode-classic .radar-display-well::after {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0 4px,
+    rgb(59 255 119 / 0.03) 4px 5px
+  );
+}
+
+.radar-mode-classic .radar-scope {
+  border-color: var(--radar-ring, #1f7a34);
+}
+
+/*
+ * Restrained phosphor glow — a small drop-shadow, never a full-screen
+ * blur. Driven by --radar-glow (0 disables it for other modes).
+ */
+.radar-mode-classic .radar-target path {
+  filter: drop-shadow(0 0 var(--radar-glow, 0) var(--radar-target, #33d15f));
+}
+
+.radar-mode-classic .radar-target.is-selected path {
+  filter: drop-shadow(0 0 var(--radar-glow, 0) var(--radar-selected, #c8ffd6));
+}
+
+.radar-mode-classic .radar-sweep path {
+  filter: drop-shadow(
+    0 0 var(--radar-glow, 0) var(--radar-sweep-fill, #3bff77)
+  );
+}
+
+/*
+ * Reduced motion: freeze the sweep as a static radial highlight, never
+ * rotating or pulsing. Targets stay fully visible and selectable — the
+ * sweep is purely decorative in every mode.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .radar-mode-classic .radar-sweep path {
+    animation: none;
+    opacity: calc(var(--radar-sweep-opacity, 0.22) * 0.6);
+  }
+}

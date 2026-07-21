@@ -383,63 +383,25 @@
   background: transparent;
 }
 
-.mission-control-console .radar-boundary,
-.mission-control-console .radar-ring {
-  stroke: var(--maria-primary);
-}
-
+/*
+ * Radar geometry COLORS are supplied by the render-engine theme
+ * registry as `--radar-*` custom properties applied on the console
+ * root (see src/lib/radar-engine/themeRegistry.ts). Only structural
+ * and typography rules for the mission-control shell remain here; the
+ * Mission Control palette lives in the `mission-control` theme, which
+ * maps every value back to these same `--maria-*` tokens so the shell's
+ * look is unchanged.
+ */
 .mission-control-console .radar-boundary {
   stroke-width: 1.35;
 }
 
-.mission-control-console .radar-axis {
-  stroke: var(--maria-border);
-}
-
 .mission-control-console .radar-direction,
 .mission-control-console .radar-range-label {
-  fill: var(--maria-primary);
   font-family: var(--maria-telemetry-font);
 }
 
-.mission-control-console .radar-sweep path {
-  fill: var(--maria-active);
-  opacity: 0.08;
-}
-
-.mission-control-console .radar-zone-ring.is-critical {
-  stroke: var(--maria-critical);
-}
-
-.mission-control-console .radar-zone-ring.is-warning {
-  stroke: var(--maria-caution);
-}
-
-.mission-control-console .radar-zone-ring.is-advisory {
-  stroke: var(--maria-primary);
-}
-
-.mission-control-console .radar-target path {
-  fill: var(--maria-active);
-  stroke: var(--maria-text);
-}
-
-.mission-control-console .radar-target.is-zone-critical path,
-.mission-control-console .radar-target.is-alert path {
-  fill: var(--maria-critical);
-}
-
-.mission-control-console .radar-target.is-zone-warning path,
-.mission-control-console .radar-target.is-selected path {
-  fill: var(--maria-caution);
-}
-
-.mission-control-console .radar-target.is-zone-advisory path {
-  fill: var(--maria-primary);
-}
-
 .mission-control-console .radar-target text {
-  fill: var(--maria-text);
   font-family: var(--maria-telemetry-font);
 }
 
