@@ -12,7 +12,7 @@ All radar rendering lives in a single component, [src/RadarScreen.tsx](../src/Ra
 - Fetches/derives data, computes geometry, manages selection state, renders controls, renders the SVG scope, and renders the selected-aircraft panel — all in one function component.
 - Renders a single inline `<svg viewBox="-250 -250 500 500">` containing range rings, alert-zone rings, compass labels, a static sweep wedge (`<path>` with a CSS `animation: radar-sweep`), trails (`<polyline>`), and aircraft markers (`<g><path>` triangle + optional `<text>` label), all interleaved directly in JSX with no layer abstraction.
 - Radius is hardcoded to `220` in six separate call sites (`projectTarget(..., 220)`), and `range` (25/50/100/200 km) is a fixed enum (`RadarRange` in [src/radarGeometry.ts](../src/radarGeometry.ts)).
-- Visual styling ("Mission Control" tokens) comes from [src/missionControl.tsx](../src/missionControl.tsx) (presentational primitives: `MissionPanel`, `TelemetryReadout`, `StatusLamp`, `SourceStateBadge`, etc.) and [src/missionControl.css](../src/missionControl.css). This is effectively today's *only* visual mode — there is no mode concept at all.
+- Visual styling ("Mission Control" tokens) comes from [src/missionControl.tsx](../src/missionControl.tsx) (presentational primitives: `MissionPanel`, `TelemetryReadout`, `StatusLamp`, `SourceStateBadge`, etc.) and [src/missionControl.css](../src/missionControl.css). This is effectively today's _only_ visual mode — there is no mode concept at all.
 
 ## 2. Current geometry engine
 
@@ -70,7 +70,7 @@ Already present and should be preserved as the baseline, not rebuilt:
 - `svg role="img"` with a descriptive `aria-label`.
 - Alert-zone legend and source-health rows use text/class-based state, not color alone.
 
-Gaps for v0.2: no `aria-live` announcement specifically for *mode change* or *selected aircraft change* as distinct events (Phase 22 requirement) — today's live regions re-announce the whole panel on any re-render, not a targeted message.
+Gaps for v0.2: no `aria-live` announcement specifically for _mode change_ or _selected aircraft change_ as distinct events (Phase 22 requirement) — today's live regions re-announce the whole panel on any re-render, not a targeted message.
 
 ## 8. Current performance risks
 
@@ -94,3 +94,21 @@ Gaps for v0.2: no `aria-live` announcement specifically for *mode change* or *se
 7. Only after Tactical + Mission Control are verified working does new-territory work begin (Classic phosphor sweep, Presentation perspective, Minimal caps) — these have no existing implementation to preserve compatibility with.
 
 Do not refactor `radarPreferences.ts`, `alertZones.ts`, `altitudeFilter.ts`, `aircraftMetadata.ts`, or `missionControlState.ts` — they are already correctly decoupled, tested (37 passing tests across these modules today), and reusable unchanged by the scene builder.
+
+## 11. Checkpoint 2 progress (extraction steps 1–6 complete for Tactical)
+
+Steps 1–6 above are done. `RadarScreen.tsx` is 793 → 699 lines; its inline `<svg>` block (steps, rings, sweep, trails, targets, labels — ~125 lines) is now `<TacticalRadarMode scene={radarScene} ... />`, with all outer chrome (controls panel, selected-aircraft panel, status strip) untouched.
+
+**Canonical `distanceKm`:** `src/radarGeometry.ts`'s implementation (the one with finite-value validation) is now canonical. `src/flightIntel.ts` imports and re-exports it instead of carrying its own haversine copy; a regression test (`flightIntel.test.ts`) asserts the two are the same function reference so the duplication cannot silently reappear.
+
+**Scene model** (`src/lib/radar-engine/`): `types.ts` defines `RadarScene`/`RadarSceneTarget`/`RadarRenderProfile`/`RadarRenderMode` exactly per the Phase 3 spec. `sceneBuilder.ts`'s `buildRadarScene()` is pure — takes normalized aircraft + an explicit `timestamp` (never reads `Date.now()` internally) and returns a deterministic `RadarScene`, verified by tests that assert identical input → identical (deep-equal) output and that the source aircraft array/objects are never mutated. It reuses `radarGeometry.ts` projection, `alertZones.ts` classification, and `altitudeFilter.ts` filtering unchanged.
+
+**Target priority** (`targetPriority.ts`): `selected > critical > warning > nearby > normal > stale > hidden`, using only alert-zone and freshness data — no hostile/friendly terminology anywhere. A stale reading is deprioritized below every alert zone unless it is also selected.
+
+**Layer system** (`src/components/radar-engine/layers/`): `BackgroundLayer`, `GridLayer`, `RangeRingLayer`, `SweepLayer`, `AlertZoneLayer`, `TrailLayer`, `AircraftLayer`, `LabelLayer`, `SelectionLayer` are implemented; `OverlayLayer` is a typed no-op stub for future overlay plugins. `RadarViewport.tsx` composes them in the fixed Phase-10 z-order and only renders a layer if the active profile's `visibleLayers` lists it — verified by a test asserting the Minimal profile's viewport omits `radar-sweep`/`radar-zone-ring` markup that the Tactical profile includes.
+
+**Mode registry** (`renderProfiles.ts`, `modeRegistry.ts`): all five modes are declared with full `RadarRenderProfile` data; only `tactical.implemented === true`. `resolveRadarRenderMode()` falls back to `tactical` for any invalid or not-yet-implemented value without throwing. Preference key `maria.radar.renderMode` follows the existing `maria.radar.*` namespace convention.
+
+**New visual element:** Tactical mode adds a selected-target bracket (`SelectionLayer` + `.radar-selection-bracket` CSS in `App.css`) — called for by Phase 5 but not present in the pre-Checkpoint-2 UI. This is the one intentional visual addition in this checkpoint; everything else in Tactical mode is pixel-for-pixel identical to the prior single-`<svg>` implementation (same viewBox math, same class names, same ring/label/trail/target markup), including the `.radar-target text` styling, which now also matches the extracted `LabelLayer`'s `.radar-target-label` class.
+
+**Remaining risks for Checkpoint 3:** Mission Control's outer panel chrome already exists in `missionControl.tsx`/`.css` today (it's the current page shell) — building `MissionControlRadarMode` means keeping that shell but swapping in the `RadarViewport` with an `mission-control`-flavored profile/theme, not building new chrome from scratch. Classic Radar's phosphor/persistence look has no existing implementation to lean on and needs new CSS/animation work while respecting the "no full-screen blur" and single-shared-clock constraints from Phase 14.
