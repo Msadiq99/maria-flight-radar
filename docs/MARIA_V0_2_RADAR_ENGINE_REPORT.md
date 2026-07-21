@@ -1,14 +1,15 @@
 # MARIA v0.2 Radar Rendering Engine Report
 
-Status: MARIA v0.2 — in development. Not released, not published, not
-tagged.
+Status: MARIA v0.2.0-beta.1 candidate — final browser review complete. Not
+released, published, or tagged.
 
 ## Metadata
 
 - Branch: `feature/maria-v0.2-radar-rendering-engine`
 - Starting commit (milestone): `b6f7fb2` (main after PR #11)
 - Checkpoint 5 start: `c5e5376`
-- Ending commit: this documentation commit (see `git log`)
+- Candidate baseline: `a113adf`
+- Ending commit: browser validation commit (see `git log`)
 - Node: v22.23.1 · npm: 10.9.8
 
 ## Commits (Checkpoint 5)
@@ -16,7 +17,8 @@ tagged.
 - `885b47f` Add radar overlay extension contracts
 - `42a2b23` Add immutable snapshot and playback foundations
 - `467922d` Add accessibility completion for the radar engine
-- (this commit) Add final v0.2 documentation and validation report
+- `a113adf` Add final v0.2 documentation and validation report
+- (this commit) Prepare v0.2.0-beta.1 browser validation evidence
 
 Earlier checkpoints (1–4) landed the audit, scene model, layer stack,
 five modes, theme registry, profile enforcement, selector, and
@@ -65,13 +67,13 @@ docs/MARIA_V0_2_RADAR_ENGINE_REPORT.md
 All five reuse the same scene, projection, selection, and source-state
 logic; they differ only in theme, layers, animation, and caps.
 
-| Mode             | Purpose             | Layers                         | Animation             | Caps (tgt/lbl/trail) | Reduced motion        | Screenshot |
-| ---------------- | ------------------- | ------------------------------ | --------------------- | -------------------- | --------------------- | ---------- |
-| Tactical         | Default operational | full + slots                   | moderate sweep        | none/none/30         | static sweep          | pending    |
-| Mission Control  | Dense desktop ops   | full + overlay slot            | restrained sweep      | none/none/30         | static sweep          | pending    |
-| Classic Radar    | Green phosphor      | no grid/alertZone              | brighter/faster sweep | none/none/20         | static highlight      | pending    |
-| Presentation     | Cinematic 2.5D      | full + overlay                 | wide sweep + CSS tilt | none/none/40         | static tilt, no drift | pending    |
-| Minimal Embedded | ESP32 preview       | rings/aircraft/label/selection | static / none         | 12/6/8               | no sweep              | pending    |
+| Mode             | Purpose             | Layers                         | Animation             | Caps (tgt/lbl/trail) | Reduced motion        | Screenshot                                                     |
+| ---------------- | ------------------- | ------------------------------ | --------------------- | -------------------- | --------------------- | -------------------------------------------------------------- |
+| Tactical         | Default operational | full + slots                   | moderate sweep        | none/none/30         | static sweep          | [PNG](assets/screenshots/v0.2/maria-radar-tactical.png)        |
+| Mission Control  | Dense desktop ops   | full + overlay slot            | restrained sweep      | none/none/30         | static sweep          | [PNG](assets/screenshots/v0.2/maria-radar-mission-control.png) |
+| Classic Radar    | Green phosphor      | no grid/alertZone              | brighter/faster sweep | none/none/20         | static highlight      | [PNG](assets/screenshots/v0.2/maria-radar-classic.png)         |
+| Presentation     | Cinematic 2.5D      | full + overlay                 | wide sweep + CSS tilt | none/none/40         | static tilt, no drift | [PNG](assets/screenshots/v0.2/maria-radar-presentation.png)    |
+| Minimal Embedded | ESP32 preview       | rings/aircraft/label/selection | static / none         | 12/6/8               | no sweep              | [PNG](assets/screenshots/v0.2/maria-radar-minimal.png)         |
 
 Responsive behavior: modes reuse the responsive mission-control shell;
 Minimal is a 320×240-equivalent frame; Presentation's tilt is inside an
@@ -93,18 +95,19 @@ critical), reduced motion in all modes.
 - **Backend:** lint clean (eslint); 17 tests pass (node:test); format clean; audit → 0 vulnerabilities. API contracts unchanged; OpenSky optional/disabled; DEMO endpoints work; no paid provider.
 - **Firmware:** `pio test -e native` → 15 test cases pass. Builds SUCCESS for `maria-m5stack-core2`, `maria-m5stack-core2-diag`, `maria-esp32-2432s028r`, `maria-esp32-2432s028r-diag`. No upload; firmware source unchanged.
 - **Runtime (DEMO):** `/health` 200; `/api/radar/source-status` reports `simulation`; snapshot returns 8 aircraft; `/radar` (+ all `?radarMode=`), `/map`, `/dashboard` all 200; ports clear on shutdown.
-- **Responsive:** structural/CSS-level only — no browser automation available; manual steps documented in `MARIA_V0_2_VALIDATION_PLAN.md`.
+- **Browser/responsive:** all five modes pass at 1440×900, 1280×720,
+  1024×768, 800×480, 768×1024, and 390×844; Minimal also passes as a
+  320×240-equivalent frame. No horizontal overflow, clipped controls, or inaccessible
+  mode selector/details were observed.
 - **Accessibility:** change-only announcement logic unit-tested; non-color critical cue tested; reduced-motion CSS verified.
 - **Source-state:** tests assert DEMO never renders LIVE in any mode.
 - **Security/privacy:** no secrets, private coordinates, absolute paths, paid APIs, OpenSky enablement, or external telemetry in changed files; localStorage limited to `maria.radar.*`.
 
 ## Known limitations
 
-- Screenshots pending manual capture — no headless browser in this environment; images never fabricated.
 - No physical firmware/board validation claimed.
 - No real RTL-SDR/live validation in this milestone.
 - No implemented overlays; no playback UI; no label-collision engine.
-- Responsive checks are structural-only (no browser automation).
 - `prediction` / `leaderLine` / `map` layers reserved but not implemented.
 
 ## Recommended next step

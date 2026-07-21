@@ -1,6 +1,6 @@
 # MARIA v0.2 Radar Mode Screenshots
 
-Planned deterministic DEMO screenshots for the five-mode comparison:
+Deterministic DEMO screenshots for the five-mode comparison:
 
 - `maria-radar-tactical.png`
 - `maria-radar-mission-control.png`
@@ -8,15 +8,23 @@ Planned deterministic DEMO screenshots for the five-mode comparison:
 - `maria-radar-presentation.png`
 - `maria-radar-minimal.png`
 
-## Status — not captured (no headless browser available)
+## Status — captured and verified
 
-These PNGs are **not yet committed.** The development
-environment has no headless browser (Playwright, Puppeteer, and Chromium
-are all absent — verified), and screenshots must never be fabricated or
-mocked. They will be captured from a real browser once one is available
-(or in Checkpoint 5 alongside the full mode gallery).
+The five PNGs were captured from the real Vite application with Playwright.
+Tactical, Mission Control, Classic Radar, and Presentation use a 1440×900
+browser viewport. Minimal Embedded is an element capture of the exact 320×240
+CSS frame (the PNG is 320×241 because the browser rounds its fractional border
+bounds). Browser chrome is excluded.
 
-## Capture procedure (deterministic, DEMO only)
+| Mode             | Screenshot                                                         |
+| ---------------- | ------------------------------------------------------------------ |
+| Tactical         | [maria-radar-tactical.png](maria-radar-tactical.png)               |
+| Mission Control  | [maria-radar-mission-control.png](maria-radar-mission-control.png) |
+| Classic Radar    | [maria-radar-classic.png](maria-radar-classic.png)                 |
+| Presentation     | [maria-radar-presentation.png](maria-radar-presentation.png)       |
+| Minimal Embedded | [maria-radar-minimal.png](maria-radar-minimal.png)                 |
+
+## Reproduction procedure (deterministic, DEMO only)
 
 1. Start demo mode with Node 22:
 

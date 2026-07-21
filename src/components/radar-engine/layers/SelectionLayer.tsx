@@ -15,7 +15,7 @@ export function SelectionLayer({ scene }: RadarLayerProps) {
       aria-hidden="true"
     >
       <path
-        d={`M-${s}-${s + 4}h6M-${s}-${s + 4}v6M${s}-${s + 4}h-6M${s}-${s + 4}v6M-${s}${s + 4}h6M-${s}${s + 4}v-6M${s}${s + 4}h-6M${s}${s + 4}v-6`}
+        d={`M ${-s} ${-(s + 4)} h 6 M ${-s} ${-(s + 4)} v 6 M ${s} ${-(s + 4)} h -6 M ${s} ${-(s + 4)} v 6 M ${-s} ${s + 4} h 6 M ${-s} ${s + 4} v -6 M ${s} ${s + 4} h -6 M ${s} ${s + 4} v -6`}
       />
     </g>
   );

@@ -1,6 +1,6 @@
 # MARIA v0.2 Validation Plan
 
-Status: MARIA v0.2 — in development.
+Status: MARIA v0.2.0-beta.1 candidate validation complete.
 
 Node 22 (`export PATH="/opt/homebrew/opt/node@22/bin:$PATH"`).
 
@@ -67,26 +67,36 @@ Confirm Ctrl-C clears ports.
 - Selected target survives the Minimal cap; Minimal caps enforced.
 - Reduced motion works; invalid stored preference falls back; source stays DEMO; no LIVE wording in DEMO.
 
-## Responsive (manual — no browser automation available)
+## Browser and responsive validation
 
-Because this environment has no Playwright/Puppeteer/Chromium, responsive
-validation is **structural/CSS-level**, plus these manual browser steps to
-run where a browser is available. For each size, load each mode via
-`?radarMode=` and verify:
+The real Vite application was exercised with Playwright against the
+deterministic DEMO backend. Every mode was loaded at every listed viewport.
 
 Sizes: 1440×900, 1280×720, 1024×768, 800×480, 768×1024, 390×844, and
 320×240-equivalent for Minimal.
 
-- No horizontal page overflow; radar keeps non-zero useful height.
-- Mode selector reachable; target selection works; details readable.
-- Presentation transform does not clip controls; Classic circle stays contained; Mission Control stacks; Minimal preview usable.
-- Reduced motion works; DEMO stays DEMO.
+- PASS: no horizontal overflow at any mode/viewport combination.
+- PASS: radar remains contained and useful; selector and details remain reachable.
+- PASS: Mission Control stacks, Presentation stays clipped to its stage, and
+  Classic remains contained.
+- PASS: Minimal renders a complete 4:3, 320×240-equivalent frame.
+- PASS: all modes display DEMO, never LIVE; no private coordinates are shown.
+- PASS: radar targets expose keyboard focus, Enter changes selection, and the
+  focused target has a visible 4px stroke.
+- PASS: reduced motion removes sweep animation; essential target and status
+  information remains static and visible.
+
+Confirmed defects corrected during this pass:
+
+- Ambiguous negative coordinates generated an invalid selected-target SVG
+  bracket path and repeated browser console errors.
+- The Minimal Embedded scope's intrinsic square dimensions expanded its outer
+  frame beyond the promised 4:3 ratio.
 
 ## Screenshots
 
-Capture only with a real browser (none here — never fabricate). See
-`docs/assets/screenshots/v0.2/README.md` for the exact procedure and the
-five target filenames.
+Five real-browser PNGs are present under `docs/assets/screenshots/v0.2/`.
+See that directory's README for dimensions, filenames, and reproduction steps.
 
 ## Security / privacy
 
