@@ -5,6 +5,27 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### MARIA v0.2.0-beta.1 — Radar Rendering Engine (candidate)
+
+- Modular radar rendering engine with a shared, immutable `RadarScene`, a
+  fixed layer stack, and five selectable render modes that share all data,
+  geometry, selection, trails, alert zones, and source-state handling:
+  Tactical (default), Mission Control, Classic Radar, Presentation (2.5D),
+  and Minimal Embedded.
+- Typed mode registry and theme registry (CSS-variable themes); one shared
+  CSS sweep animation; `applyRenderProfile` target/label/trail caps.
+- Production render-mode selector with `maria.radar.renderMode` persistence
+  and change-only aria-live announcements.
+- Typed, disabled-by-default overlay plugin contract and immutable
+  snapshot/playback foundations (no overlays implemented, no playback UI).
+- Browser-validated responsive layouts across desktop, tablet, mobile, and a
+  320×240 Minimal Embedded frame; sanitized deterministic DEMO screenshots for
+  all five modes.
+- Corrected the selected-target SVG bracket path and constrained the Minimal
+  Embedded scope to its 4:3 frame.
+- Backend API contracts unchanged; OpenSky remains optional/disabled; no
+  firmware behavior changed. Candidate only; not released.
+
 ## [0.1.0-alpha] - 2026-07-18
 
 ### Added
