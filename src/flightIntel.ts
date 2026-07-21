@@ -1,4 +1,7 @@
 import type { AircraftTraffic } from './traffic';
+import { distanceKm } from './radarGeometry';
+
+export { distanceKm };
 
 const EARTH_RADIUS_KM = 6371;
 const DEG_TO_RAD = Math.PI / 180;
@@ -24,22 +27,6 @@ function toRad(value: number) {
 
 function toDeg(value: number) {
   return value * RAD_TO_DEG;
-}
-
-export function distanceKm(
-  aLat: number,
-  aLon: number,
-  bLat: number,
-  bLon: number
-) {
-  const dLat = toRad(bLat - aLat);
-  const dLon = toRad(bLon - aLon);
-  const lat1 = toRad(aLat);
-  const lat2 = toRad(bLat);
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
-  return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(h));
 }
 
 function bearingToCardinal(bearing: number) {
