@@ -237,7 +237,7 @@
 .radar-scope {
   width: min(80vh, 100%);
   max-height: calc(100vh - 150px);
-  background: #06141d;
+  background: var(--radar-scope-bg, #06141d);
   border: 1px solid #1e6370;
   border-radius: 50%;
   overflow: visible;
@@ -245,14 +245,14 @@
 .radar-boundary,
 .radar-ring {
   fill: none;
-  stroke: #238a94;
+  stroke: var(--radar-ring, #238a94);
   stroke-width: 1;
 }
 .radar-ring {
   opacity: 0.65;
 }
 .radar-axis {
-  stroke: #20636e;
+  stroke: var(--radar-axis, #20636e);
   stroke-width: 1;
 }
 .radar-zone-ring {
@@ -263,35 +263,35 @@
   pointer-events: none;
 }
 .radar-zone-ring.is-critical {
-  stroke: #ff5e68;
+  stroke: var(--radar-critical, #ff5e68);
 }
 .radar-zone-ring.is-warning {
-  stroke: #f4d35e;
+  stroke: var(--radar-warning, #f4d35e);
 }
 .radar-zone-ring.is-advisory {
-  stroke: #65cbd2;
+  stroke: var(--radar-advisory, #65cbd2);
 }
 .radar-direction,
 .radar-range-label {
-  fill: #65cbd2;
+  fill: var(--radar-compass, #65cbd2);
   font-size: 9px;
 }
 .radar-center {
-  fill: #f4d35e;
+  fill: var(--radar-center, #f4d35e);
 }
 .radar-trail {
   fill: none;
-  stroke: #42c9a0;
+  stroke: var(--radar-trail, #42c9a0);
   stroke-width: 1.5;
   stroke-dasharray: 3 4;
   opacity: 0.65;
   pointer-events: none;
 }
 .radar-sweep path {
-  fill: #51e6aa;
-  opacity: 0.13;
+  fill: var(--radar-sweep-fill, #51e6aa);
+  opacity: var(--radar-sweep-opacity, 0.13);
   transform-origin: 0 0;
-  animation: radar-sweep 5s linear infinite;
+  animation: radar-sweep var(--radar-sweep-duration, 5s) linear infinite;
 }
 .radar-scope.is-paused .radar-sweep path {
   animation-play-state: paused;
@@ -301,35 +301,52 @@
   outline: none;
 }
 .radar-target path {
-  fill: #55ed9a;
-  stroke: #c9ffe2;
+  fill: var(--radar-target, #55ed9a);
+  stroke: var(--radar-target-stroke, #c9ffe2);
   stroke-width: 1;
 }
 .radar-target.is-zone-critical path {
-  fill: #ff5e68;
+  fill: var(--radar-critical, #ff5e68);
 }
 .radar-target.is-zone-warning path {
-  fill: #f4d35e;
+  fill: var(--radar-warning, #f4d35e);
 }
 .radar-target.is-zone-advisory path {
-  fill: #5ed7ff;
+  fill: var(--radar-advisory, #5ed7ff);
 }
-.radar-target text {
-  fill: #a4e9b9;
+.radar-target.is-stale path {
+  fill: var(--radar-stale, #8fa9a0);
+  opacity: 0.6;
+}
+.radar-target text,
+.radar-target-label {
+  fill: var(--radar-label, #a4e9b9);
   font-size: 9px;
 }
 .radar-target.is-selected path {
-  fill: #f4d35e;
-  stroke: #fff4b0;
+  fill: var(--radar-selected, #f4d35e);
+  stroke: var(--radar-selected-stroke, #fff4b0);
   stroke-width: 2;
 }
 .radar-target.is-alert path {
-  fill: #ff5e68;
+  fill: var(--radar-critical, #ff5e68);
   stroke: #ffd0d0;
 }
 .radar-target:focus path {
   stroke: white;
   stroke-width: 3;
+}
+.radar-selection-bracket path {
+  fill: none;
+  stroke: var(--radar-selection-bracket, #f4d35e);
+  stroke-width: 1.5;
+}
+.radar-critical-marker {
+  fill: none;
+  stroke: var(--radar-critical, #ff5e68);
+  stroke-width: 1.25;
+  stroke-dasharray: 2 2;
+  pointer-events: none;
 }
 .radar-controls {
   display: flex;

@@ -5,6 +5,20 @@
 - Public documentation, demo mode, existing web/backend, existing firmware
   targets, public CI, and contribution system.
 
+## v0.2: Radar rendering engine (in development)
+
+- Modular rendering engine with five render modes (Tactical, Mission
+  Control, Classic Radar, Presentation, Minimal Embedded) sharing one
+  scene model, mode/theme registries, profile-based density caps, a
+  production mode selector with persistence, overlay extension points,
+  and snapshot/playback readiness. Not released.
+
+## v0.2.1: Live receiver integration validation
+
+- RTL-SDR/readsb live feed, target-volume performance, stale-data
+  transitions, receiver disconnect/reconnect behavior, renderer profiling,
+  and hardware-terminal parity review.
+
 ## v0.2.0-beta: Live receiver validation
 
 - RTL-SDR validation, readsb/dump1090 guide, live web and Core2 evidence,

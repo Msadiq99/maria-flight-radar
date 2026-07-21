@@ -53,10 +53,13 @@ npm run dev:check
 
 The backend health endpoint is <http://127.0.0.1:8081/health>.
 
-<img src="docs/assets/screenshots/maria-web-radar-demo.png" alt="MARIA radar console showing eight deterministic demo targets" width="960">
+<img src="docs/assets/screenshots/v0.2/maria-radar-tactical.png" alt="MARIA v0.2 tactical radar showing eight deterministic demo targets" width="960">
 
 The radar screenshot above is local deterministic demo data, not a live
 receiver capture or a physical hardware result.
+
+See the [v0.2 radar mode gallery](docs/assets/screenshots/v0.2/README.md) for
+Mission Control, Classic Radar, Presentation, and Minimal Embedded views.
 
 ## Architecture
 
@@ -78,6 +81,14 @@ validation is pending for this alpha.
 - Live, cache, demo, and offline source states.
 - M5Stack Core2 and ESP32-2432S028R firmware source and diagnostics.
 - Documentation, contribution templates, Dependabot, and public CI.
+
+**Beta candidate (MARIA v0.2.0-beta.1 — not released)**
+
+- A modular radar rendering engine with five render modes — Tactical
+  (default), Mission Control, Classic Radar, Presentation, and Minimal
+  Embedded — sharing one scene model and truthful source-state handling.
+  See [render modes](docs/MARIA_RADAR_RENDER_MODES.md) and the
+  [engine overview](docs/MARIA_V0_2_RADAR_RENDERING_ENGINE.md).
 
 **Not yet included**
 
