@@ -1,0 +1,260 @@
+/*
+ * Radar-engine mode structure.
+ *
+ * Per-mode PALETTE comes from inline `--radar-*` custom properties set
+ * by the theme registry on the console root. This file holds only the
+ * structural / effect rules a flat color variable cannot express
+ * (phosphor backdrop, restrained glow), scoped by the `radar-mode-*`
+ * class the same root carries.
+ */
+
+/* ---- Shared helpers ----------------------------------------------- */
+
+.radar-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---- Mode selector ------------------------------------------------- */
+
+.radar-mode-selector {
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.6rem 0.65rem;
+  border: 1px solid var(--maria-border, #444653);
+  border-radius: 4px;
+}
+
+.radar-mode-selector legend {
+  padding: 0 0.35rem;
+  font-family: var(--maria-heading-font, inherit);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.radar-mode-options {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.radar-mode-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.45rem;
+  align-items: start;
+  min-height: 40px;
+  padding: 0.35rem 0.4rem;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.radar-mode-option:hover {
+  background: var(--maria-panel-raised, rgb(255 255 255 / 0.04));
+}
+
+.radar-mode-option input {
+  margin-top: 0.2rem;
+}
+
+.radar-mode-option-text {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.radar-mode-option-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.radar-mode-option-desc {
+  color: var(--maria-text-muted, #c4c5d5);
+  font-size: 0.68rem;
+  line-height: 1.25;
+}
+
+.radar-mode-reset {
+  min-height: 40px;
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--maria-border, #444653);
+  border-radius: 3px;
+  background: var(--maria-panel-raised, #222b36);
+  color: var(--maria-text, #dae3f2);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.radar-mode-reset:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* ---- Classic phosphor mode ---------------------------------------- */
+
+/* Near-black green scope backdrop, replacing the periwinkle grid well. */
+.radar-mode-classic .radar-display-well {
+  background-color: #020a04;
+  background-image: radial-gradient(
+    circle at center,
+    rgb(59 255 119 / 0.05),
+    transparent 70%
+  );
+}
+
+.radar-mode-classic .radar-display-well::after {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0 4px,
+    rgb(59 255 119 / 0.03) 4px 5px
+  );
+}
+
+.radar-mode-classic .radar-scope {
+  border-color: var(--radar-ring, #1f7a34);
+}
+
+/*
+ * Restrained phosphor glow — a small drop-shadow, never a full-screen
+ * blur. Driven by --radar-glow (0 disables it for other modes).
+ */
+.radar-mode-classic .radar-target path {
+  filter: drop-shadow(0 0 var(--radar-glow, 0) var(--radar-target, #33d15f));
+}
+
+.radar-mode-classic .radar-target.is-selected path {
+  filter: drop-shadow(0 0 var(--radar-glow, 0) var(--radar-selected, #c8ffd6));
+}
+
+.radar-mode-classic .radar-sweep path {
+  filter: drop-shadow(
+    0 0 var(--radar-glow, 0) var(--radar-sweep-fill, #3bff77)
+  );
+}
+
+/*
+ * Reduced motion: freeze the sweep as a static radial highlight, never
+ * rotating or pulsing. Targets stay fully visible and selectable — the
+ * sweep is purely decorative in every mode.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .radar-mode-classic .radar-sweep path {
+    animation: none;
+    opacity: calc(var(--radar-sweep-opacity, 0.22) * 0.6);
+  }
+}
+
+/* ---- Presentation 2.5D mode --------------------------------------- */
+
+/*
+ * A CSS-only perspective tilt on a wrapper around the shared viewport.
+ * The SVG scene coordinates are untouched — only the wrapper is
+ * transformed, so targets stay interactive and correctly positioned.
+ */
+.radar-mode-presentation .radar-display-well {
+  background-color: #04070f;
+  background-image: radial-gradient(
+    circle at center,
+    rgb(87 200 255 / 0.06),
+    transparent 72%
+  );
+  perspective: 1400px;
+  /* Soft edge vignette; never clips the interactive plane. */
+  box-shadow: inset 0 0 120px rgb(2 6 15 / 0.85);
+}
+
+.radar-presentation-stage {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  /* Contain the tilted plane so it can never overflow the page. */
+  overflow: hidden;
+}
+
+.radar-presentation-plane {
+  width: 100%;
+  max-width: 100%;
+  transform: rotateX(24deg) scale(0.94);
+  transform-origin: center 60%;
+  transition: transform 240ms ease;
+}
+
+.radar-mode-presentation .radar-target-label {
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* Selected-target halo — a restrained glow, not a full-screen blur. */
+.radar-mode-presentation .radar-target.is-selected path {
+  filter: drop-shadow(0 0 6px var(--radar-selected, #ffe07a));
+}
+
+.radar-mode-presentation .radar-selection-bracket path {
+  filter: drop-shadow(0 0 4px var(--radar-selection-bracket, #ffe07a));
+}
+
+/* ---- Minimal Embedded mode ---------------------------------------- */
+
+/*
+ * A 320×240-equivalent preview frame (4:3) with high-contrast flat
+ * styling. No glow, no blur, no shadows.
+ */
+.radar-minimal-frame {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(100%, 320px);
+  aspect-ratio: 4 / 3;
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: 6px;
+  overflow: hidden;
+  border: 1px solid var(--radar-ring, #2f8f5a);
+  background: #000;
+}
+
+.radar-mode-minimal .radar-display-well {
+  background: #000;
+  background-image: none;
+}
+
+.radar-mode-minimal .radar-display-well::after {
+  content: none;
+}
+
+.radar-mode-minimal .radar-target-label {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.mission-control-console.radar-mode-minimal .radar-scope {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  max-height: 100%;
+  border: 0;
+}
+
+/* Presentation reduced motion: keep the static tilt, drop any drift. */
+@media (prefers-reduced-motion: reduce) {
+  .radar-presentation-plane {
+    transition: none;
+  }
+  .radar-mode-presentation .radar-sweep path {
+    animation: none;
+    opacity: calc(var(--radar-sweep-opacity, 0.16) * 0.6);
+  }
+}

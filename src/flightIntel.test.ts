@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { distanceKm, predictFlight } from './flightIntel';
+import { distanceKm as geodesicDistanceKm } from './radarGeometry';
 import type { AircraftTraffic } from './traffic';
 
 const aircraft: AircraftTraffic = {
@@ -24,6 +25,10 @@ const aircraft: AircraftTraffic = {
 describe('flight intelligence', () => {
   it('computes zero distance for identical coordinates', () => {
     expect(distanceKm(24.7, 46.6, 24.7, 46.6)).toBe(0);
+  });
+
+  it('re-exports the canonical radarGeometry distanceKm rather than duplicating it', () => {
+    expect(distanceKm).toBe(geodesicDistanceKm);
   });
 
   it('predicts a near-zero closest approach for a direct track', () => {

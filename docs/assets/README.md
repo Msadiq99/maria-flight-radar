@@ -8,6 +8,9 @@
   diagram of the local-first data path.
 - `screenshots/maria-web-radar-demo.png` is a reproducible local browser capture
   of the radar in deterministic demo mode. It contains no live receiver data.
+- `screenshots/maria-mission-control-demo.png` is the verified 1440x900 MARIA
+  mission-control radar in deterministic demo mode. It contains no live
+  receiver data or private coordinates.
 
 Core2 physical UI evidence is pending and must not be substituted with concept
 artwork.
