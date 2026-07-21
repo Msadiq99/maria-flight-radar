@@ -1,14 +1,16 @@
 # MARIA v0.2 Radar Mode Screenshots
 
-Planned deterministic DEMO screenshots for the render-mode comparison:
+Planned deterministic DEMO screenshots for the five-mode comparison:
 
-- `maria-radar-tactical-checkpoint3.png`
-- `maria-radar-mission-control-checkpoint3.png`
-- `maria-radar-classic-checkpoint3.png`
+- `maria-radar-tactical.png`
+- `maria-radar-mission-control.png`
+- `maria-radar-classic.png`
+- `maria-radar-presentation.png`
+- `maria-radar-minimal.png`
 
-## Status — not captured in Checkpoint 3
+## Status — not captured (no headless browser available)
 
-These PNGs are **not yet committed.** The Checkpoint 3 development
+These PNGs are **not yet committed.** The development
 environment has no headless browser (Playwright, Puppeteer, and Chromium
 are all absent — verified), and screenshots must never be fabricated or
 mocked. They will be captured from a real browser once one is available
@@ -28,6 +30,11 @@ mocked. They will be captured from a real browser once one is available
    - Tactical: `http://127.0.0.1:5175/radar?radarMode=tactical`
    - Mission Control: `http://127.0.0.1:5175/radar?radarMode=mission-control`
    - Classic: `http://127.0.0.1:5175/radar?radarMode=classic`
+   - Presentation: `http://127.0.0.1:5175/radar?radarMode=presentation`
+   - Minimal Embedded: `http://127.0.0.1:5175/radar?radarMode=minimal`
+
+   (Or select the mode from the "Render mode" control in the radar
+   controls panel — it persists to `maria.radar.renderMode`.)
 
 3. Confirm before capturing each frame:
    - source badge reads **DEMO** (never LIVE),

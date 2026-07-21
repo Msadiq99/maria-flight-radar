@@ -126,3 +126,19 @@ Steps 1–6 above are done. `RadarScreen.tsx` is 793 → 699 lines; its inline `
 **Dev-only switching:** `?radarMode=tactical|mission-control|classic` resolved through `resolveRadarRenderMode` (invalid/unimplemented → Tactical). Render-mode is independent of the traffic source mode, so switching causes no refetch and no source-state change. No persistence yet (Checkpoint 4 selector).
 
 **Deferred:** the production mode selector, Presentation/Minimal modes, label-collision engine, and screenshot capture (no headless browser in this environment — see `docs/assets/screenshots/v0.2/README.md`).
+
+## 13. Checkpoint 4 progress (Presentation + Minimal, selector, persistence, caps)
+
+**All five modes are now `implemented: true`.** `listImplementedModes()` returns exactly five.
+
+**Shared profile enforcement** (`src/lib/radar-engine/applyRenderProfile.ts`): a pure, deterministic, immutable function that derives the scene actually rendered by enforcing a profile's target/label/trail caps — the single place caps are applied, before any layer renders (called once in `RadarViewport` via `useMemo`). It never mutates the input scene, targets, or trail arrays. Because `scene.targets` is already priority-sorted, "keep first N" preserves priority and order; the selected target is force-kept even under a tiny cap, and always keeps its label. Trails keep their newest points. `statistics.visibleCount` becomes the rendered count while `totalCount` stays the true in-range figure.
+
+**Presentation** (`PresentationRadarMode`): cinematic 2.5D via a **CSS perspective tilt on a wrapper** (`.radar-presentation-stage` / `.radar-presentation-plane`) around the same `RadarViewport`/`RadarScene` — SVG coordinates are unchanged (test asserts identical in-SVG translates across all modes), so no separate projection, no WebGL/Three.js, no second scene model. Navy/black theme, cyan-blue grid, brighter trails, wider soft sweep, selected halo, edge vignette. Reduced motion drops the drift/sweep but keeps the static tilt and full interactivity.
+
+**Minimal Embedded** (`MinimalEmbeddedRadarMode`): high-contrast flat preview framed at 320×240-equivalent (4:3), no glow/blur/shadow, static (no sweep). Caps 12/6/8 enforced by the shared step, not the component. Web/firmware share the design contract, not code; no firmware changed.
+
+**Production selector** (`RadarModeSelector`): native-radio radiogroup over `listImplementedModes()` only (no placeholders), each with a text description, keyboard/touch operable with visible focus, plus a reset-to-default control. An `aria-live` region in `RadarScreen` announces mode changes (only on actual change, via a mount guard).
+
+**Persistence:** `maria.radar.renderMode` via `loadStoredRadarRenderMode`/`saveRadarRenderMode`. Precedence — a `?radarMode=` query param sets the initial view (debug, not persisted); otherwise the stored preference; otherwise Tactical. Invalid stored/param values and unavailable/throwing storage all fall back to Tactical without crashing. A user selection persists; reset restores Tactical.
+
+**Deferred to Checkpoint 5:** future overlay plugins, label-collision optimization, prediction/leader-line layers, playback UI, firmware refactor, screenshots (still no headless browser).
