@@ -1,13 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { DEVICE_ID } from './config';
 import { predictFlight } from './flightIntel';
-import {
-  bearingDegrees,
-  distanceKm,
-  projectTarget,
-  rangeRingValues,
-  type RadarRange,
-} from './radarGeometry';
+import type { RadarRange } from './radarGeometry';
+import { buildRadarScene } from './lib/radar-engine/sceneBuilder';
+import { TacticalRadarMode } from './components/radar-engine/modes/TacticalRadarMode';
 import {
   ALTITUDE_FILTER_LABELS,
   filterAircraftByAltitude,
@@ -156,6 +152,34 @@ export function RadarScreen() {
     selected && selectedZone
       ? selectedAircraftMetadata(selected, centerLat, centerLon, selectedZone)
       : null;
+  const radarScene = useMemo(
+    () =>
+      buildRadarScene({
+        aircraft: inRange,
+        center:
+          centerLat === null || centerLon === null
+            ? null
+            : { lat: centerLat, lon: centerLon },
+        rangeKm: range,
+        altitudeFilter,
+        alertZones: preferences.alertZones,
+        selectedTargetId: selectedId,
+        sourceState,
+        trails: traffic.trails,
+        timestamp: Date.now(),
+      }),
+    [
+      inRange,
+      centerLat,
+      centerLon,
+      range,
+      altitudeFilter,
+      preferences.alertZones,
+      selectedId,
+      sourceState,
+      traffic.trails,
+    ]
+  );
   const applyZoneDraft = () => {
     if (zoneValidation) return;
     updatePreferences({ alertZones: zoneDraft });
@@ -481,131 +505,13 @@ export function RadarScreen() {
             }
           />
           <InsetDisplay className="radar-display-well">
-            <svg
-              className={`radar-scope ${paused ? 'is-paused' : ''}`}
-              viewBox="-250 -250 500 500"
-              role="img"
-              aria-label={`${visibleAircraft.length} of ${inRange.length} aircraft visible`}
-            >
-              <circle className="radar-boundary" r="220" />
-              {rangeRingValues(range).map((ring) => (
-                <g key={ring}>
-                  <circle className="radar-ring" r={(220 * ring) / range} />
-                  <text
-                    className="radar-range-label"
-                    x="6"
-                    y={(-220 * ring) / range + 14}
-                  >
-                    {ring} km
-                  </text>
-                </g>
-              ))}
-              <path className="radar-axis" d="M-220 0H220M0-220V220" />
-              {[
-                ['critical', preferences.alertZones.criticalKm],
-                ['warning', preferences.alertZones.warningKm],
-                ['advisory', preferences.alertZones.advisoryKm],
-              ].map(([zone, radius]) =>
-                Number(radius) <= range ? (
-                  <circle
-                    key={zone}
-                    className={`radar-zone-ring is-${zone}`}
-                    r={(220 * Number(radius)) / range}
-                  />
-                ) : null
-              )}
-              <text className="radar-direction" x="-5" y="-230">
-                N
-              </text>
-              <text className="radar-direction" x="228" y="5">
-                E
-              </text>
-              <text className="radar-direction" x="-5" y="240">
-                S
-              </text>
-              <text className="radar-direction" x="-240" y="5">
-                W
-              </text>
-              <g className="radar-sweep" aria-hidden="true">
-                <path d="M0 0L0-220A220 220 0 0 1 38-217Z" />
-              </g>
-              <circle className="radar-center" r="5" />
-              {trails && centerLat !== null && centerLon !== null
-                ? Object.entries(traffic.trails).map(([aircraftId, points]) => {
-                    const projected = points
-                      .map(([lat, lon]) => {
-                        const point = projectTarget(
-                          bearingDegrees(centerLat, centerLon, lat, lon),
-                          distanceKm(centerLat, centerLon, lat, lon),
-                          range,
-                          220
-                        );
-                        return point.visible ? `${point.x},${point.y}` : null;
-                      })
-                      .filter((point): point is string => point !== null);
-                    return projected.length > 1 ? (
-                      <polyline
-                        key={aircraftId}
-                        className="radar-trail"
-                        points={projected.join(' ')}
-                        aria-label={`Trail for ${aircraftId}`}
-                      />
-                    ) : null;
-                  })
-                : null}
-              {visibleAircraft.map((item) => {
-                const p = projectTarget(
-                  bearingDegrees(
-                    centerLat || 0,
-                    centerLon || 0,
-                    item.lat,
-                    item.lon
-                  ),
-                  distanceKm(
-                    centerLat || 0,
-                    centerLon || 0,
-                    item.lat,
-                    item.lon
-                  ),
-                  range,
-                  220
-                );
-                const alert = item.flyby_probability >= 65;
-                const zone = classifyAlertZone(
-                  item.distance_km,
-                  preferences.alertZones
-                );
-                return (
-                  <g
-                    key={item.id}
-                    className={`radar-target is-zone-${zone} ${selectedId === item.id ? 'is-selected' : ''} ${alert ? 'is-alert' : ''}`}
-                    transform={`translate(${p.x} ${p.y}) rotate(${item.heading_deg})`}
-                    onClick={() => setSelectedId(item.id)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        setSelectedId(item.id);
-                      }
-                    }}
-                    tabIndex={0}
-                    role="button"
-                    aria-pressed={selectedId === item.id}
-                    aria-label={`Select ${item.callsign}`}
-                  >
-                    <path d="M0-10L5 7L0 4L-5 7Z" />
-                    {labels && (
-                      <text
-                        transform={`rotate(${-item.heading_deg})`}
-                        x="9"
-                        y="4"
-                      >
-                        {item.callsign}
-                      </text>
-                    )}
-                  </g>
-                );
-              })}
-            </svg>
+            <TacticalRadarMode
+              scene={radarScene}
+              paused={paused}
+              showLabels={labels}
+              showTrails={trails}
+              onSelectTarget={setSelectedId}
+            />
           </InsetDisplay>
           <div className="radar-zone-legend" aria-label="Alert-zone legend">
             {Object.entries(ALERT_ZONE_LABELS).map(([zone, label]) => (

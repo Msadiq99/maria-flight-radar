@@ -314,7 +314,8 @@
 .radar-target.is-zone-advisory path {
   fill: #5ed7ff;
 }
-.radar-target text {
+.radar-target text,
+.radar-target-label {
   fill: #a4e9b9;
   font-size: 9px;
 }
@@ -330,6 +331,11 @@
 .radar-target:focus path {
   stroke: white;
   stroke-width: 3;
+}
+.radar-selection-bracket path {
+  fill: none;
+  stroke: #f4d35e;
+  stroke-width: 1.5;
 }
 .radar-controls {
   display: flex;
