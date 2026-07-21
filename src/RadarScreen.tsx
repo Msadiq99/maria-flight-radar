@@ -1,14 +1,22 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { DEVICE_ID } from './config';
 import { predictFlight } from './flightIntel';
 import type { RadarRange } from './radarGeometry';
 import { buildRadarScene } from './lib/radar-engine/sceneBuilder';
-import { resolveRadarRenderMode } from './lib/radar-engine/modeRegistry';
+import {
+  DEFAULT_RADAR_RENDER_MODE,
+  getRenderProfile,
+  loadStoredRadarRenderMode,
+  resolveRadarRenderMode,
+  saveRadarRenderMode,
+} from './lib/radar-engine/modeRegistry';
+import type { RadarRenderMode } from './lib/radar-engine/types';
 import {
   radarModeClassName,
   radarThemeToCssVars,
 } from './lib/radar-engine/themeRegistry';
 import { RadarModeRenderer } from './components/radar-engine/modes/RadarModeRenderer';
+import { RadarModeSelector } from './components/radar-engine/RadarModeSelector';
 import {
   ALTITUDE_FILTER_LABELS,
   filterAircraftByAltitude,
@@ -108,11 +116,32 @@ export function RadarScreen() {
       ? (requested as HybridSource)
       : 'auto';
   });
-  // Development-only render-mode override via ?radarMode=. Only implemented
-  // modes are accepted; anything else falls back to Tactical. Changing it
-  // affects rendering only — it never triggers a data refetch or alters the
-  // source state. No persistence yet (arrives with the Checkpoint 4 selector).
-  const renderMode = resolveRadarRenderMode(params.get('radarMode'));
+  // Render mode. Precedence on first load: a `?radarMode=` query param
+  // (debug override — sets the initial view but is not persisted) wins;
+  // otherwise the stored `maria.radar.renderMode` preference is used;
+  // otherwise Tactical. Only implemented modes resolve — anything else
+  // falls back to Tactical without crashing. Changing mode affects
+  // rendering only: it never triggers a data refetch or alters source state.
+  const [renderMode, setRenderMode] = useState<RadarRenderMode>(() =>
+    params.get('radarMode') !== null
+      ? resolveRadarRenderMode(params.get('radarMode'))
+      : loadStoredRadarRenderMode()
+  );
+  const changeRenderMode = (next: RadarRenderMode) => {
+    const resolved = resolveRadarRenderMode(next);
+    setRenderMode(resolved);
+    // Persist only on an active user selection (not the debug query param).
+    saveRadarRenderMode(resolved);
+  };
+  const [modeAnnouncement, setModeAnnouncement] = useState('');
+  const didMountMode = useRef(false);
+  useEffect(() => {
+    if (!didMountMode.current) {
+      didMountMode.current = true;
+      return;
+    }
+    setModeAnnouncement(`Radar mode: ${getRenderProfile(renderMode).label}`);
+  }, [renderMode]);
   const updatePreferences = (next: Partial<RadarPreferencesV2>) => {
     setPreferences((current) => {
       const resolved = { ...current, ...next, version: 2 as const };
@@ -250,6 +279,9 @@ export function RadarScreen() {
       className={`radar-console mission-control-console ${radarModeClassName(renderMode)}`}
       style={radarThemeToCssVars(renderMode)}
     >
+      <p className="radar-visually-hidden" aria-live="polite" role="status">
+        {modeAnnouncement}
+      </p>
       <header className="radar-topbar mission-command-header">
         <div className="mission-command-brand">
           <ModuleIdentifier>SYS-MARIA-CONTROL</ModuleIdentifier>
@@ -292,6 +324,11 @@ export function RadarScreen() {
             meta={`${range} KM`}
           />
           <div className="mission-panel-body">
+            <RadarModeSelector
+              mode={renderMode}
+              defaultMode={DEFAULT_RADAR_RENDER_MODE}
+              onChange={changeRenderMode}
+            />
             <div className="radar-metrics">
               <TelemetryReadout label="Aircraft" value={aircraft.length} />
               <TelemetryReadout
